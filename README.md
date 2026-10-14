@@ -49,6 +49,16 @@ This decodes the machine's DSDT/SSDT tables, locates reset and power methods at 
 
 Firmware can describe a reset through `_RST`, power resources, or a `_DSD` GPIO mapping. When that description is missing, unnamed GPIO lines cannot identify the physical PERST connection. The scan reports candidates for an adapter; it cannot generate a board's missing wiring information.
 
+Some firmware also retains named reset settings in its platform configuration database. The experimental policy scanner extracts those names and assignments from IA32 firmware modules:
+
+```bash
+sudo gpu-firmware-policy --live
+# Or scan an existing UEFIExtract output directory:
+python3 firmware_policy.py /path/to/bios.bin.dump
+```
+
+Live scanning needs a readable BIOS MTD device and [UEFIExtract](https://github.com/LongSoft/UEFITool), installed at `/usr/local/lib/gpu-recovery-generic/uefiextract` or supplied with `--extractor`. It reads through `/dev/mtdNro`, unpacks a temporary copy, and prints reset-policy candidates. It leaves register-valued arguments unresolved and does not activate GPIOs. The current parser covers the observed AMI named-PCD layout and IA32 writer patterns; other firmware formats need additional parsers. Assignments can belong to inactive board/SKU branches, so the output is for adapter development.
+
 Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML and can run a CUDA test you provide.
 
 ## Configure GPU workers

@@ -12,7 +12,9 @@ fi
 if [[ "$EUID" != 0 ]]; then echo 'Run sudo ./install.sh' >&2; exit 1; fi
 install -d -o root -g root -m 0755 /usr/local/lib/gpu-recovery-generic /etc/gpu-recovery /etc/gpu-recovery/profiles.d
 install -o root -g root -m 0755 "$task_root/gpu_recovery.py" /usr/local/lib/gpu-recovery-generic/gpu_recovery.py
+install -o root -g root -m 0755 "$task_root/firmware_policy.py" /usr/local/lib/gpu-recovery-generic/firmware_policy.py
 ln -sfn /usr/local/lib/gpu-recovery-generic/gpu_recovery.py /usr/local/sbin/gpu-recovery
+ln -sfn /usr/local/lib/gpu-recovery-generic/firmware_policy.py /usr/local/sbin/gpu-firmware-policy
 if [[ ! -e /etc/gpu-recovery/config.json ]]; then
     install -o root -g root -m 0644 "$task_root/examples/config.json" /etc/gpu-recovery/config.json
 fi

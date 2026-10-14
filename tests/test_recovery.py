@@ -3,6 +3,29 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_enterprise_gpu_classes_included_but_switch_network_audio_excluded(self):
+        temp,root=self.fixture()
+        with temp:
+            device=root/'0000:07:00.0'
+            for klass in ('0x030000','0x030200','0x120000'):
+                (device/'class').write_text(klass)
+                self.assertEqual(g.discover(root),['0000:07:00.0'])
+            for klass in ('0x068000','0x020000','0x040300'):
+                (device/'class').write_text(klass)
+                self.assertEqual(g.discover(root),[])
+    def test_enterprise_reset_scope_refuses_unsafe_kernel_fallback(self):
+        for info,count in (({},2),({'nvlink_present':True},1),({'mig_mode':'Enabled'},1),
+                           ({'virtualization_mode':'VGPU'},1)):
+            with self.subTest(info=info,count=count),self.assertRaises(g.RecoveryError):
+                g.kernel_fallback_allowed({'nvidia':info},count)
+        g.kernel_fallback_allowed({'nvidia':{'virtualization_mode':'None'}},1)
+    def test_enterprise_inventory_parses_mig_fabric_and_nvlink_without_mutation(self):
+        xml='<nvidia_smi_log><gpu><product_name>Compute GPU</product_name><mig_mode><current_mig>Enabled</current_mig></mig_mode><gpu_fabric_info><state>Completed</state></gpu_fabric_info></gpu></nvidia_smi_log>'
+        with patch.object(g,'run',side_effect=[(0,xml),(0,'GPU0 GPU1\nGPU0 X NV18\nGPU1 NV18 X')]) as run:
+            result=g.nvidia_inventory(g.Target('0000:07:00.0',[],None,False,[],{}))
+            self.assertEqual(result['mig_mode'],'Enabled');self.assertTrue(result['nvlink_present'])
+            self.assertEqual(result['fabric_state'],'Completed')
+            self.assertNotIn('--gpu-reset',str(run.call_args_list))
     def test_low_level_capabilities_decode_flr_and_extended_reset_scope(self):
         data=bytearray(4096);data[:2]=b'\xde\x10';data[0x34]=0x40
         data[0x40]=0x10;data[0x42:0x44]=(2).to_bytes(2,'little')
@@ -29,7 +52,7 @@ class RecoveryTests(unittest.TestCase):
                  'backend':{'command':['/verified/adapter'],'requires_single_gpu':True},
                  'check_command':['/verified/adapter','--check']}
         for i in range(count): (profiles/f'{i}.json').write_text(json.dumps(profile))
-        with patch.object(g,'DMI',dmi),patch.object(g,'trusted_file'),patch.object(g.os,'geteuid',return_value=0),patch.object(g,'run',return_value=(1 if mode=='failed_check' else 0,'checked')) as run,patch.object(g,'write_sysfs') as write:
+        with patch.object(g,'nvidia_inventory',return_value={}),patch.object(g,'DMI',dmi),patch.object(g,'trusted_file'),patch.object(g.os,'geteuid',return_value=0),patch.object(g,'run',return_value=(1 if mode=='failed_check' else 0,'checked')) as run,patch.object(g,'write_sysfs') as write:
             report=g.explore(g.inspect('0000:07:00.0',root),{},root,profiles)
             write.assert_not_called()
             if mode=='mismatch': run.assert_not_called()

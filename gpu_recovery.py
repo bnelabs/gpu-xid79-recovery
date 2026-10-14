@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Discover and recover NVIDIA GPUs using host-exposed reset capabilities."""
 import argparse, collections, csv, dataclasses, fcntl, hashlib, json, os, pathlib, pwd, re, signal, subprocess, sys, time
+import xml.etree.ElementTree as ET
 
 BDF = re.compile(r'[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]')
 SYSFS = pathlib.Path('/sys/bus/pci/devices')
@@ -27,12 +28,13 @@ def text(path, default=''):
 def discover(root=SYSFS):
     result=[]
     for p in sorted(root.iterdir()):
-        if BDF.fullmatch(p.name) and text(p/'vendor')=='0x10de' and text(p/'class').startswith('0x03'):
+        klass=text(p/'class')
+        if BDF.fullmatch(p.name) and text(p/'vendor')=='0x10de' and klass.startswith(('0x03','0x1200')):
             result.append(p.name)
     return result
 
 def inspect(bdf,root=SYSFS):
-    if not BDF.fullmatch(bdf) or bdf not in discover(root): raise RecoveryError('Select a discovered NVIDIA display-class GPU')
+    if not BDF.fullmatch(bdf) or bdf not in discover(root): raise RecoveryError('Select a discovered NVIDIA GPU or processing accelerator')
     path=(root/bdf).resolve(); parent=path.parent
     slot=sorted(p.name for p in root.iterdir() if BDF.fullmatch(p.name) and p.name[:-1]==bdf[:-1])
     bridge=parent.name if BDF.fullmatch(parent.name) else None
@@ -144,6 +146,40 @@ def gpio_inventory():
         chips.append(item)
     return chips
 
+def nvidia_inventory(target):
+    """Driver-reported enterprise capabilities; absence is explicitly unknown."""
+    result={'query_available':False,'mig_mode':None,'virtualization_mode':None,
+            'fabric_state':None,'topology':None,'nvlink_present':None}
+    try:
+        rc,out=run(['/usr/bin/nvidia-smi','-i',target.bdf,'-q','-x'],15)
+        if not rc:
+            gpu=ET.fromstring(out).find('gpu')
+            if gpu is not None:
+                result.update(query_available=True,name=gpu.findtext('product_name'),
+                    architecture=gpu.findtext('product_architecture'),uuid=gpu.findtext('uuid'),
+                    mig_mode=gpu.findtext('mig_mode/current_mig'),
+                    virtualization_mode=gpu.findtext('gpu_virtualization_mode/virtualization_mode'),
+                    fabric_state=gpu.findtext('gpu_fabric_info/state'))
+        rc,out=run(['/usr/bin/nvidia-smi','topo','-m'],15)
+        if not rc:
+            result['topology']=out
+            result['nvlink_present']=bool(re.search(r'\bNV\d+\b',out))
+    except CommandTimeout: raise
+    except (OSError,ET.ParseError,RecoveryError) as e: result['error']=str(e)
+    return result
+
+def kernel_fallback_allowed(report,gpu_count):
+    nvidia=report.get('nvidia',{})
+    if gpu_count>1:
+        raise RecoveryError('Multi-GPU kernel fallback requires a verified lifecycle adapter; peer reset scope cannot be inferred from PCI isolation')
+    if nvidia.get('nvlink_present'):
+        raise RecoveryError('NVLink fabric detected; generic PCI fallback refused')
+    if (nvidia.get('mig_mode') or '').lower()=='enabled':
+        raise RecoveryError('MIG enabled; generic PCI fallback refused without an instance-aware adapter')
+    virtualization=(nvidia.get('virtualization_mode') or '').lower()
+    if virtualization and virtualization not in ('none','n/a','not supported'):
+        raise RecoveryError('Virtualized GPU; generic PCI fallback requires a host-aware adapter')
+
 def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
     """Inventory only: never evaluate ACPI methods or request/toggle GPIO lines."""
     board={key:text(DMI/key) for key in ('board_vendor','board_name','board_version',
@@ -165,6 +201,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'pci_resources':text(device/'resource').splitlines(),
             'iommu_group':str((device/'iommu_group').resolve()) if (device/'iommu_group').exists() else None,
             'chipset_devices':[], 'acpi_tables':[],
+            'nvidia':nvidia_inventory(target),
             'profiles':[],'selected_backend':backend_for(target,cfg),
             'unverified_candidates_policy':'Inventory only; GPIO wiring and firmware reset scope require a verified adapter'}
     for entry in sorted(root.iterdir()):
@@ -375,6 +412,7 @@ def recover(target,cfg,backend_only=False):
             log(out)
             if rc: raise RecoveryError('Lifecycle backend failed; no further reset attempted')
         else:
+            kernel_fallback_allowed(report,len(discover()))
             detached_reset(target,cfg)
         verify(target,cfg)
     finally:

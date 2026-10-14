@@ -2,7 +2,7 @@
 
 A motherboard-independent Linux controller for discovering NVIDIA GPUs, inspecting their PCIe reset scope, and attempting recovery after Xid79 without rebooting the host.
 
-**The core contains no board names, GPIO numbers, PCI addresses, driver instruction offsets, or GPU model whitelist.** It identifies NVIDIA display devices by PCI vendor/class and reads their advertised capabilities. Standard reset selection therefore does not depend on a 3090, or on a 30/40/50/60-series marketing name. Installed driver support and real hardware reset capabilities still matter; future models and other generations have not been hardware-validated here.
+**The core contains no board names, GPIO numbers, PCI addresses, driver instruction offsets, or GPU model whitelist.** It identifies NVIDIA VGA/3D GPUs and processing accelerators by PCI vendor/class and reads their advertised capabilities. GeForce, RTX/Quadro workstation, Tesla, and NVIDIA data-center/industrial GPUs are in scope, with no generation or model whitelist. NVIDIA networking, audio, and NVSwitch devices are not treated as GPU targets. Standard reset selection therefore does not depend on a 3090, or on a 30/40/50/60-series marketing name. Installed driver support and real hardware reset capabilities still matter; future models and other generations have not been hardware-validated here.
 
 Every recovery attempt explores the board first, then acts on the resulting capability report. Independently verified platform profiles can supply PERST or power control when standard interfaces are insufficient.
 
@@ -20,7 +20,7 @@ gpu-recovery discover
 sudo gpu-recovery explore --gpu 0000:07:00.0
 ```
 
-The PCI address above is an example: use a discovered address. `discover`, `explore`, and `plan` do not reset hardware. Root exploration can read privileged PCI configuration space and run installed, root-managed adapters' read-only compatibility checks. Without root, matched profiles are reported as pending that check. If exactly one NVIDIA display-class GPU exists, `--gpu` can be omitted. Recovery and watching require root.
+The PCI address above is an example: use a discovered address. `discover`, `explore`, and `plan` do not reset hardware. Root exploration can read privileged PCI configuration space and run installed, root-managed adapters' read-only compatibility checks. Without root, matched profiles are reported as pending that check. If exactly one NVIDIA GPU or processing accelerator exists, `--gpu` can be omitted. Recovery and watching require root.
 
 Installation does not enable a watcher or reset hardware. It installs the CLI at `/usr/local/sbin/gpu-recovery` and a default empty configuration at `/etc/gpu-recovery/config.json`.
 
@@ -49,6 +49,14 @@ A timed-out kernel command stops further reset attempts. SIGKILL does not necess
 
 The generic kernel path may fail in the same NVIDIA teardown waits observed on the original server. Driver-specific kernel patches belong in a version-checked adapter, not the generic core.
 
+## Workstation, industrial, and data-center scope
+
+Discovery accepts NVIDIA VGA/3D classes (`03xx`) and processing accelerator class (`1200`), including headless compute GPUs. This is discovery support, not a claim that every listed product has been hardware-tested.
+
+Exploration also queries driver-reported architecture, UUID, MIG mode, virtualization mode, fabric state, and topology. Unsupported/unavailable fields remain unknown. Targeted NVIDIA reset is still the first standard route. As documented by [NVIDIA](https://docs.nvidia.com/deploy/nvidia-smi/index.html), NVLink peers and Fabric Manager can affect reset scope. The controller never automatically expands a reset to peer GPUs or stops Fabric Manager/DCGM. If targeted reset fails, generic PCI fallback is refused on multi-GPU hosts, when NVLink is detected, when MIG is enabled, or in a reported virtualized GPU mode. A verified lifecycle adapter is required for those broader recovery cases. MIG partitions, vGPU tenants, and NVSwitch fabrics are not destroyed/reconfigured by the generic core.
+
+No server-specific workload service is required or auto-discovered. The default `services` list is empty. Administrators may explicitly list their GPU workers to drain, using the optional configuration below. Platform adapters are external privileged code and must implement their own appropriate workload lifecycle; the historical MS-7D25 adapter is optional and specific to the original server.
+
 ## Configure workloads and validation
 
 Edit the root-owned `/etc/gpu-recovery/config.json`:
@@ -58,7 +66,7 @@ Edit the root-owned `/etc/gpu-recovery/config.json`:
   "watch_gpus": ["0000:07:00.0"],
   "services": [
     {"unit": "my-gpu-worker.service"},
-    {"user": "alice", "unit": "llama-server.service"}
+    {"user": "alice", "unit": "gpu-worker.service"}
   ],
   "validation_command": ["/usr/local/lib/my-gpu-tests/cuda-check"],
   "backends": {}
@@ -91,7 +99,7 @@ The backend receives `GPU_BDF`, `GPU_BRIDGE`, and JSON `GPU_SLOT_FUNCTIONS` envi
 
 The included [MS-7D25 configuration](examples/ms7d25-adapter.json) integrates the separately installed [verified board-specific implementation](https://github.com/bnelabs/ms7d25-gpu-recovery). That adapter keeps its GPIO wiring and experimental driver offsets in its own version-pinned package. They are not made universal by this controller.
 
-The installer also adds [a verified discovery profile](profiles/ms7d25.json) under `/etc/gpu-recovery/profiles.d/` if it does not already exist. On the original server, `sudo gpu-recovery auto` finds this adapter without a board-specific CLI argument. Other boards fall back to standard NVIDIA/kernel interfaces. This profile deliberately constrains the GPU identity and slot because its external adapter does; the generic core imposes no such model restriction. A profile needs board and PCI identity constraints, a root-managed backend executable, and a read-only `check_command`. The check must validate any wiring, topology, kernel, driver, and resource requirements before returning success. A profile's optional `validation_command` supplies CUDA verification when selected.
+The default installer adds no board-specific profile and no workload-service dependencies. An optional [verified discovery profile](profiles/ms7d25.json) can be installed with `sudo ./install.sh --profile ms7d25`; existing administrator profiles are preserved. On the original server, `sudo gpu-recovery auto` finds this adapter without a board-specific CLI argument. Other boards fall back to standard NVIDIA/kernel interfaces. This profile deliberately constrains the GPU identity and slot because its external adapter does; the generic core imposes no such model restriction. A profile needs board and PCI identity constraints, a root-managed backend executable, and a read-only `check_command`. The check must validate any wiring, topology, kernel, driver, and resource requirements before returning success. A profile's optional `validation_command` supplies CUDA verification when selected.
 
 ## Automatic operation
 
@@ -104,7 +112,7 @@ sudo journalctl -u gpu-recovery-generic.service -f
 
 The watcher reads new kernel Xid79 events, resolves their GPU PCI address, and applies the same recovery policy. Each GPU is limited to three attempts per hour. A failure suppresses further attempts for that GPU until watcher restart. Unknown GPUs and other Xids are ignored.
 
-**Run only one recovery watcher for a GPU.** On the verified MS-7D25 server the original watcher remains enabled, and this generic watcher is installed but disabled, avoiding simultaneous recovery controllers.
+**Run only one recovery watcher for a GPU.** The generic watcher is installed disabled. It depends only on the kernel journal and your explicit GPU allowlist; it has no llama, Harness, or other application-service dependency.
 
 ## Validation
 

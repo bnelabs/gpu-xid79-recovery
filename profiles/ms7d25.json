@@ -1,0 +1,25 @@
+{
+  "id": "ms7d25-verified-perst",
+  "match": {
+    "board_vendor": "Micro-Star International Co., Ltd.",
+    "board_name": "PRO Z690-A WIFI DDR4(MS-7D25)",
+    "vendor": "0x10de",
+    "device": "0x2204",
+    "bdf": "0000:01:00.0"
+  },
+  "check_command": [
+    "/usr/local/sbin/gpu-recover-ms7d25",
+    "--check"
+  ],
+  "backend": {
+    "command": [
+      "/usr/local/sbin/gpu-recover-ms7d25"
+    ],
+    "requires_single_gpu": true,
+    "prefer_backend": true
+  },
+  "validation_command": [
+    "/usr/local/lib/gpu-recovery/cuda-probe"
+  ],
+  "provenance": "Verified physical PERST wiring and actual no-reboot Xid79 recovery: https://github.com/bnelabs/ms7d25-gpu-recovery"
+}

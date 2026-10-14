@@ -1,8 +1,51 @@
-import pathlib, tempfile, unittest
+import json, pathlib, tempfile, unittest
 from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_low_level_capabilities_decode_flr_and_extended_reset_scope(self):
+        data=bytearray(4096);data[:2]=b'\xde\x10';data[0x34]=0x40
+        data[0x40]=0x10;data[0x42:0x44]=(2).to_bytes(2,'little')
+        data[0x44:0x48]=(1<<28).to_bytes(4,'little')
+        data[0x100:0x104]=(0x15|(1<<16)|(0x120<<20)).to_bytes(4,'little')
+        data[0x120:0x124]=(0x1d|(1<<16)).to_bytes(4,'little')
+        caps=g.pci_capabilities(data)
+        self.assertTrue(caps['standard'][0]['flr_advertised'])
+        self.assertEqual([c['name'] for c in caps['extended']],['Resizable BAR','DPC'])
+    def test_lost_gpu_and_capability_loops_do_not_invent_support(self):
+        self.assertEqual(g.pci_capabilities(b'\xff'*4096)['standard'],[])
+        data=bytearray(256);data[:2]=b'\xde\x10';data[0x34]=0x40
+        data[0x40:0x42]=bytes([5,0x40])
+        self.assertEqual(len(g.pci_capabilities(data)['standard']),1)
+    def profile_report(self,mode='valid',count=1):
+        temp,root=self.fixture()
+        self.addCleanup(temp.cleanup)
+        base=pathlib.Path(temp.name);dmi=base/'dmi';dmi.mkdir()
+        (dmi/'board_name').write_text('Test Board')
+        (root/'0000:07:00.0/device').write_text('0x1234')
+        profiles=base/'profiles';profiles.mkdir()
+        profile={'match':{'board_name':'Wrong Board' if mode=='mismatch' else 'Test Board',
+                         'vendor':'0x10de','device':'0x1234'},
+                 'backend':{'command':['/verified/adapter'],'requires_single_gpu':True},
+                 'check_command':['/verified/adapter','--check']}
+        for i in range(count): (profiles/f'{i}.json').write_text(json.dumps(profile))
+        with patch.object(g,'DMI',dmi),patch.object(g,'trusted_file'),patch.object(g.os,'geteuid',return_value=0),patch.object(g,'run',return_value=(1 if mode=='failed_check' else 0,'checked')) as run,patch.object(g,'write_sysfs') as write:
+            report=g.explore(g.inspect('0000:07:00.0',root),{},root,profiles)
+            write.assert_not_called()
+            if mode=='mismatch': run.assert_not_called()
+            else: self.assertEqual(run.call_args.args[0],['/verified/adapter','--check'])
+            return report
+    def test_exploration_selects_only_checked_hardware_profile(self):
+        report=self.profile_report()
+        self.assertEqual(report['selected_backend']['command'],['/verified/adapter'])
+        cfg=g.discovered_config(report,{})
+        self.assertIn('0000:07:00.0',cfg['backends'])
+    def test_mismatched_board_never_executes_profile(self):
+        self.assertIsNone(self.profile_report('mismatch')['selected_backend'])
+    def test_failed_compatibility_check_never_selects_adapter(self):
+        self.assertIsNone(self.profile_report('failed_check')['selected_backend'])
+    def test_ambiguous_profiles_refuse_selection(self):
+        with self.assertRaises(g.RecoveryError): self.profile_report(count=2)
     def fixture(self,extra=False):
         temp=tempfile.TemporaryDirectory();base=pathlib.Path(temp.name)
         root=base/'bus/pci/devices';root.mkdir(parents=True)
@@ -62,12 +105,12 @@ class RecoveryTests(unittest.TestCase):
             with self.assertRaises(g.RecoveryError):g.trusted_file(pathlib.Path(d)/'missing')
     def test_active_cuda_clients_abort_before_any_reset(self):
         target=g.Target('0000:07:00.0',[],None,False,[],{})
-        with patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'run',return_value=(0,'1234')) as run,patch.object(g,'detached_reset') as reset:
+        with patch.object(g,'inspect',return_value=target),patch.object(g,'explore',return_value={'selected_backend':None,'selection':'kernel'}),patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'run',return_value=(0,'1234')) as run,patch.object(g,'detached_reset') as reset:
             with self.assertRaises(g.RecoveryError):g.recover(target,{})
             self.assertEqual(run.call_count,1);reset.assert_not_called()
     def test_in_use_reset_refusal_is_not_bypassed(self):
         target=g.Target('0000:07:00.0',[],None,False,[],{})
-        with patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'run',side_effect=[(0,''),(1,'GPU is in use by another client')]) as run,patch.object(g,'detached_reset') as reset:
+        with patch.object(g,'inspect',return_value=target),patch.object(g,'explore',return_value={'selected_backend':None,'selection':'kernel'}),patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'run',side_effect=[(0,''),(1,'GPU is in use by another client')]) as run,patch.object(g,'detached_reset') as reset:
             with self.assertRaises(g.RecoveryError):g.recover(target,{})
             self.assertEqual(run.call_count,2);reset.assert_not_called()
 

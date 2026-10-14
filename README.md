@@ -59,6 +59,14 @@ python3 firmware_policy.py /path/to/bios.bin.dump
 
 Live scanning needs a readable BIOS MTD device and [UEFIExtract](https://github.com/LongSoft/UEFITool), installed at `/usr/local/lib/gpu-recovery-generic/uefiextract` or supplied with `--extractor`. It reads through `/dev/mtdNro`, unpacks a temporary copy, and prints reset-policy candidates. It leaves register-valued arguments unresolved and does not activate GPIOs. The current parser covers the observed AMI named-PCD layout and IA32 writer patterns; other firmware formats need additional parsers. Assignments can belong to inactive board/SKU branches, so the output is for adapter development.
 
+To read the running firmware's PEG reset settings, use:
+
+```bash
+sudo gpu-firmware-policy --runtime-acpi
+```
+
+This reads the DSDT's GNVS layout and the corresponding ACPI NVS memory, then maps encoded pads through chipset definitions and the kernel's live GPIO ranges. It needs `iasl`, readable `/dev/mem`, and mounted debugfs. The current chipset reference covers Alder Lake-S GPP_E and GPP_F; other chipsets need their own definitions. The report includes raw polarity and port values. It does not toggle GPIOs: GPU-to-slot association, polarity semantics, and reset scope still need validation.
+
 Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML and can run a CUDA test you provide.
 
 ## Configure GPU workers

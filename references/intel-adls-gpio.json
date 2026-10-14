@@ -1,0 +1,14 @@
+{
+  "family": "Intel Alder Lake-S GPIO version 4-S",
+  "acpi_hids": ["INTC1056", "INTC1085"],
+  "pad_prefix": 134217728,
+  "groups": {
+    "14": {"name": "GPP_E", "physical_start": 208, "count": 23},
+    "16": {"name": "GPP_F", "physical_start": 231, "count": 15}
+  },
+  "sources": [
+    "https://github.com/intel/FSP/blob/master/RaptorLakeFspBinPkg/Client/RaptorLakeS/Include/GpioSampleDef.h",
+    "https://github.com/torvalds/linux/blob/master/drivers/pinctrl/intel/pinctrl-alderlake.c"
+  ],
+  "scope": "Chipset pad encoding and pin indices only; no motherboard wiring or GPIO line offsets"
+}

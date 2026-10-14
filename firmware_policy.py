@@ -151,10 +151,15 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory',nargs='?',help='UEFIExtract output directory')
     parser.add_argument('--live',action='store_true',help='Read BIOS through /dev/mtdNro and extract in a private temporary directory')
+    parser.add_argument('--runtime-acpi',action='store_true',help='Read reset fields from live ACPI NVS and correlate Linux GPIO ranges')
     parser.add_argument('--extractor',default='/usr/local/lib/gpu-recovery-generic/uefiextract')
     args=parser.parse_args()
     if args.live and args.directory:parser.error('Choose --live or an extracted directory')
-    if not args.live and not args.directory:parser.error('Specify --live or an extracted directory')
-    print(json.dumps(live_scan(args.extractor) if args.live else scan(args.directory),indent=2))
+    if not args.live and not args.directory and not args.runtime_acpi:parser.error('Specify --live, --runtime-acpi, or an extracted directory')
+    report=live_scan(args.extractor) if args.live else scan(args.directory) if args.directory else {}
+    if args.runtime_acpi:
+        from firmware_runtime import live_nvs
+        report['runtime_acpi']=live_nvs(pathlib.Path(__file__).resolve().parent/'references')
+    print(json.dumps(report,indent=2))
 
 if __name__=='__main__':main()

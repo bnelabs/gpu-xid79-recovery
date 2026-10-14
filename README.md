@@ -2,7 +2,7 @@
 
 A motherboard-independent Linux controller for discovering NVIDIA GPUs, inspecting their PCIe reset scope, and attempting recovery after Xid79 without rebooting the host.
 
-**The core contains no board names, GPIO numbers, PCI addresses, driver instruction offsets, or GPU model whitelist.** It identifies NVIDIA VGA/3D GPUs and processing accelerators by PCI vendor/class and reads their advertised capabilities. GeForce, RTX/Quadro workstation, Tesla, and NVIDIA data-center/industrial GPUs are in scope, with no generation or model whitelist. NVIDIA networking, audio, and NVSwitch devices are not treated as GPU targets. Standard reset selection therefore does not depend on a 3090, or on a 30/40/50/60-series marketing name. Installed driver support and real hardware reset capabilities still matter; future models and other generations have not been hardware-validated here.
+**The core contains no board names, GPIO numbers, PCI addresses, driver instruction offsets, or GPU model whitelist.** It identifies NVIDIA VGA/3D GPUs and processing accelerators by PCI vendor/class and reads their advertised capabilities. GeForce, RTX/Quadro workstation, Tesla, and NVIDIA data-center/industrial GPUs are in scope, with no generation or model whitelist. NVIDIA networking, audio, and NVSwitch devices are not treated as GPU targets. Reset selection uses capabilities exposed by the hardware and installed driver.
 
 Every recovery attempt explores the board first, then acts on the resulting capability report. Independently verified platform profiles can supply PERST or power control when standard interfaces are insufficient.
 
@@ -47,7 +47,7 @@ Low-level inventory is evidence, not a wiring diagram. ACPI metadata, a GPIO lab
 
 A timed-out kernel command stops further reset attempts. SIGKILL does not necessarily terminate a kernel task stuck in D-state. If detach/reset is blocked, the controller does not issue another rebind/reset against that locked device. It does not globally unload NVIDIA modules, remove/rescan PCI trees, write arbitrary registers, guess GPIOs, or invoke reboot/suspend.
 
-The generic kernel path may fail in the same NVIDIA teardown waits observed on the original server. Driver-specific kernel patches belong in a version-checked adapter, not the generic core.
+A blocked driver teardown can prevent kernel reset. Driver-specific recovery belongs in a version-checked adapter.
 
 ## Workstation, industrial, and data-center scope
 
@@ -55,7 +55,7 @@ Discovery accepts NVIDIA VGA/3D classes (`03xx`) and processing accelerator clas
 
 Exploration also queries driver-reported architecture, UUID, MIG mode, virtualization mode, fabric state, and topology. Unsupported/unavailable fields remain unknown. Targeted NVIDIA reset is still the first standard route. As documented by [NVIDIA](https://docs.nvidia.com/deploy/nvidia-smi/index.html), NVLink peers and Fabric Manager can affect reset scope. The controller never automatically expands a reset to peer GPUs or stops Fabric Manager/DCGM. If targeted reset fails, generic PCI fallback is refused on multi-GPU hosts, when NVLink is detected, when MIG is enabled, or in a reported virtualized GPU mode. A verified lifecycle adapter is required for those broader recovery cases. MIG partitions, vGPU tenants, and NVSwitch fabrics are not destroyed/reconfigured by the generic core.
 
-No server-specific workload service is required or auto-discovered. The default `services` list is empty. Administrators may explicitly list their GPU workers to drain, using the optional configuration below. Platform adapters are external privileged code and must implement their own appropriate workload lifecycle; the historical MS-7D25 adapter is optional and specific to the original server.
+The default `services` list is empty. Configure the GPU workers you want drained before recovery. Platform adapters must implement any additional workload lifecycle they require.
 
 ## Configure workloads and validation
 
@@ -97,9 +97,9 @@ A lifecycle adapter owns the complete hardware reset, PCI restoration, and drive
 
 The backend receives `GPU_BDF`, `GPU_BRIDGE`, and JSON `GPU_SLOT_FUNCTIONS` environment values. The core verifies the configured DMI identity constraints before stopping services or running it. `requires_single_gpu` protects adapters that manage a global NVIDIA driver lifecycle. `prefer_backend` skips NVML when a verified platform recovery is preferable; the CLI also accepts `--backend-only` for explicit adapter testing.
 
-The included [MS-7D25 configuration](examples/ms7d25-adapter.json) integrates the separately installed [verified board-specific implementation](https://github.com/bnelabs/ms7d25-gpu-recovery). That adapter keeps its GPIO wiring and experimental driver offsets in its own version-pinned package. They are not made universal by this controller.
+Profiles in `/etc/gpu-recovery/profiles.d/` need board and PCI identity constraints, a root-managed backend executable, and a read-only `check_command`. The check must validate wiring, topology, kernel, driver, and resource requirements before returning success. An optional `validation_command` supplies CUDA verification when the profile is selected. The default installer adds no platform profiles and preserves existing administrator profiles.
 
-The default installer adds no board-specific profile and no workload-service dependencies. An optional [verified discovery profile](profiles/ms7d25.json) can be installed with `sudo ./install.sh --profile ms7d25`; existing administrator profiles are preserved. On the original server, `sudo gpu-recovery auto` finds this adapter without a board-specific CLI argument. Other boards fall back to standard NVIDIA/kernel interfaces. This profile deliberately constrains the GPU identity and slot because its external adapter does; the generic core imposes no such model restriction. A profile needs board and PCI identity constraints, a root-managed backend executable, and a read-only `check_command`. The check must validate any wiring, topology, kernel, driver, and resource requirements before returning success. A profile's optional `validation_command` supplies CUDA verification when selected.
+For compatible hardware, the optional [MS-7D25 profile](profiles/ms7d25.json) and [configuration example](examples/ms7d25-adapter.json) integrate the separately installed [platform adapter](https://github.com/bnelabs/ms7d25-gpu-recovery). Install the profile with `sudo ./install.sh --profile ms7d25`. Its hardware and version constraints apply only to that adapter.
 
 ## Automatic operation
 
@@ -112,7 +112,7 @@ sudo journalctl -u gpu-recovery-generic.service -f
 
 The watcher reads new kernel Xid79 events, resolves their GPU PCI address, and applies the same recovery policy. Each GPU is limited to three attempts per hour. A failure suppresses further attempts for that GPU until watcher restart. Unknown GPUs and other Xids are ignored.
 
-**Run only one recovery watcher for a GPU.** The generic watcher is installed disabled. It depends only on the kernel journal and your explicit GPU allowlist; it has no llama, Harness, or other application-service dependency.
+Run only one recovery watcher per GPU to avoid concurrent reset attempts.
 
 ## Validation
 
@@ -122,11 +122,9 @@ python3 -m unittest discover -s tests -v
 
 Tests cover nonhardcoded PCI addresses, shared-bridge storage refusal, blocked detach stopping subsequent operations, original-driver rebind order, command deadlines, Xid targeting, root-managed command checks, and CUDA UUID isolation. Synthetic PCI/sysfs tests are not hardware-recovery claims.
 
-On the original server the generic controller completed a real, full hardware reset/reload cycle through its verified MS-7D25 lifecycle adapter, then passed its own NVML and CUDA validator. See [live-adapter-test.log](live-adapter-test.log). Linux boot ID stayed unchanged. This test was performed on the recovered, healthy GPU; it did not inject another Xid79.
+Hardware validation covers an RTX 3090 on an MS-7D25 board through the optional platform adapter: recovery from unreachable PCI configuration space, successful NVML and CUDA transfer checks, and unchanged Linux boot identity. This validates the adapter integration; it does not establish recovery support for other boards or GPUs.
 
-The standard NVML and generic sysfs recovery paths have not been hardware-validated on other motherboards. No universal recovery guarantee is claimed. The original real-Xid79 recovery evidence is in the board-specific repository.
-
-The updated automatic flow was tested on this server at 20:41 on 2026-10-14. Exploration found live GPU config space returning `ffff` and NVML unable to find the device. It automatically selected and checked the installed adapter, restored the GPU, and passed CUDA transfer correctness checks with unchanged boot ID. See [live-auto-test.log](live-auto-test.log), [board-exploration.json](board-exploration.json) for the failed-state inventory, and [board-exploration-after.json](board-exploration-after.json) for the recovered capabilities. This failure was observed directly; no new Xid79 was recorded in the preceding ten minutes, so it is not labeled as a newly observed Xid79 event. The original watcher was restored afterwards.
+Standard NVIDIA/kernel reset paths, enterprise fabrics, MIG, and virtualized deployments require further hardware validation. Automated tests use synthetic fixtures for those policy checks. Discovery coverage is broader than hardware-tested recovery coverage.
 
 ## References
 
@@ -135,4 +133,4 @@ The updated automatic flow was tested on this server at 20:41 on 2026-10-14. Exp
 - [Linux PCI error recovery](https://docs.kernel.org/PCI/pci-error-recovery.html)
 - [MS-7D25 actual recovery and driver investigation](https://github.com/bnelabs/ms7d25-gpu-recovery)
 
-GPL-2.0-only. The generic repository includes no private boardview or server firmware dump.
+GPL-2.0-only.

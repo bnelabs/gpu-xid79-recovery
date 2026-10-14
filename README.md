@@ -35,6 +35,16 @@ sudo gpu-recovery auto --gpu 0000:07:00.0 --config /etc/gpu-recovery/config.json
 
 `recover` is an alias for `auto`. Both inspect the hardware on every run. If an installed platform profile matches and passes its compatibility check, the script can use that adapter. Otherwise, it tries a targeted NVIDIA reset, followed by a kernel reset of the GPU's PCI functions if needed.
 
+For a closer look at firmware reset controls, install ACPICA's `iasl` tool and run:
+
+```bash
+sudo gpu-recovery explore --deep --gpu 0000:07:00.0
+```
+
+This decodes the machine's DSDT/SSDT tables, locates reset and power methods at the GPU and upstream port, and traces literal helper-method calls. GPIO discovery also reads line names, consumers, and polarity flags. The firmware scan runs without a board profile. Its report includes partial-decode errors and unresolved scope information; it does not execute firmware methods. To include it during recovery or watching, use `--deep` or set `"deep_discovery": true` in the config.
+
+Firmware can describe a reset through `_RST`, power resources, or a `_DSD` GPIO mapping. When that description is missing, unnamed GPIO lines cannot identify the physical PERST connection. The scan reports candidates for an adapter; it cannot generate a board's missing wiring information.
+
 Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML and can run a CUDA test you provide.
 
 ## Configure GPU workers

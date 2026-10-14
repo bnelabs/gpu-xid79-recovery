@@ -2,6 +2,7 @@
 """Discover and recover NVIDIA GPUs using host-exposed reset capabilities."""
 import argparse, collections, csv, dataclasses, fcntl, hashlib, json, os, pathlib, pwd, re, signal, subprocess, sys, time
 import xml.etree.ElementTree as ET
+import shutil, tempfile
 
 BDF = re.compile(r'[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]')
 SYSFS = pathlib.Path('/sys/bus/pci/devices')
@@ -141,10 +142,141 @@ def gpio_inventory():
                 info=bytearray(68);fcntl.ioctl(fd,0x8044b401,info,True)
                 item['label']=bytes(info[32:64]).split(b'\0',1)[0].decode('utf-8','replace')
                 item['lines']=int.from_bytes(info[64:68],sys.byteorder)
+                item['named_lines']=[]
+                for offset in range(item['lines']):
+                    line=bytearray(72);line[:4]=offset.to_bytes(4,sys.byteorder)
+                    # GPIO_GET_LINEINFO_IOCTL reads names, ownership and flags only.
+                    try: fcntl.ioctl(fd,0xc048b402,line,True)
+                    except OSError as e:
+                        item['line_info_error']=str(e);break
+                    name=bytes(line[8:40]).split(b'\0',1)[0].decode('utf-8','replace')
+                    consumer=bytes(line[40:72]).split(b'\0',1)[0].decode('utf-8','replace')
+                    if name or consumer:
+                        flags=int.from_bytes(line[4:8],sys.byteorder)
+                        item['named_lines'].append({'offset':offset,'name':name,'consumer':consumer,
+                            'kernel_owned':bool(flags&1),'output':bool(flags&2),'active_low':bool(flags&4),
+                            'reset_name_candidate':bool(re.search(r'perst|pcie.*rst|gpu.*rst|reset',name+' '+consumer,re.I))})
             finally: os.close(fd)
         except OSError as e: item['unavailable']=str(e)
         chips.append(item)
     return chips
+
+def acpi_path(value):
+    return tuple(part.rstrip('_') for part in value.strip().lstrip('\\').split('.') if part)
+
+def asl_reset_objects(source,include_helpers=False):
+    """Static namespace extraction, not an AML interpreter or wiring proof."""
+    source=re.sub(r'/\*.*?\*/|//[^\n]*',lambda m:' '*len(m[0]),source,flags=re.S)
+    tokens=list(re.finditer(r'"(?:\\.|[^"\\])*"|[A-Za-z_\\^][A-Za-z0-9_\\^.]*|[{}(),]|[^\s]',source))
+    pairs={};stack=[]
+    for i,token in enumerate(tokens):
+        value=token[0]
+        if value in ('(','{'): stack.append((value,i))
+        elif value in (')','}') and stack:
+            kind,start=stack.pop()
+            if (kind,value) in (('(',')'),('{','}')): pairs[start]=i
+    result=[]
+    def resolve(name,parent):
+        if name.startswith('\\'): return acpi_path(name)
+        while name.startswith('^'):
+            parent=parent[:-1];name=name[1:]
+        return parent+acpi_path(name)
+    def scan(start,end,parent):
+        i=start
+        while i<end:
+            kind=tokens[i][0]
+            if kind in ('Scope','Device','PowerResource','Method','Name') and i+2<end and tokens[i+1][0]=='(':
+                close=pairs.get(i+1)
+                if close is None: i+=1;continue
+                name=tokens[i+2][0];path=resolve(name,parent)
+                body=close+1;body_end=pairs.get(body) if body<end and tokens[body][0]=='{' else None
+                finish=body_end if body_end is not None else close
+                snippet=source[tokens[i].start():tokens[finish].end()]
+                relevant=(kind=='Method' and name.split('.')[-1] in ('_RST','_PR0','_PR3','_PRR','_PS0','_PS3','_ON','_OFF') or kind=='Name' and (name.split('.')[-1] in ('_PR0','_PR3','_PRR') or name.split('.')[-1]=='_DSD' and re.search(r'"(?:reset-gpios|reset-gpio|gpio-line-names)"',snippet)))
+                if relevant or include_helpers and kind=='Method':
+                    result.append({'path':'\\'+'.'.join(path),'kind':kind,'source':snippet[:12000],
+                                   'truncated':len(snippet)>12000,'reset_related':bool(relevant)})
+                if body_end is not None:
+                    scan(body+1,body_end,path if kind in ('Scope','Device','PowerResource') else parent)
+                i=finish+1
+            else: i+=1
+    scan(0,len(tokens),())
+    return result
+
+def trace_acpi_helpers(objects,scope,limit=128):
+    index={acpi_path(item['path']):item for item in objects}
+    pending=[key for key in index if key[:-1] in {acpi_path(p) for p in scope} and index[key]['reset_related']]
+    seen=set();result=[]
+    while pending and len(seen)<limit:
+        key=pending.pop(0)
+        if key in seen: continue
+        seen.add(key);item=dict(index[key]);calls=[];unresolved=[]
+        # Only resolve literal calls to methods present in the decoded namespace.
+        # AML indirection and runtime-created objects remain unresolved.
+        for name in re.findall(r'([\\^A-Za-z_][\\^.A-Za-z0-9_]*)\s*\(',item['source']):
+            base=key[:-1]
+            if name.startswith('\\'): candidates=[acpi_path(name)]
+            elif name.startswith('^'):
+                while name.startswith('^'):base=base[:-1];name=name[1:]
+                candidates=[base+acpi_path(name)]
+            else: candidates=[base[:n]+acpi_path(name) for n in range(len(base),-1,-1)]
+            found=next((path for path in candidates if path in index and index[path]['kind']=='Method'),None)
+            if found is not None and found!=key:
+                calls.append(index[found]['path']);pending.append(found)
+            elif found is None and re.fullmatch(r'[\\^A-Z0-9_.]+',name): unresolved.append(name)
+        item['resolved_method_calls']=sorted(set(calls))
+        item['unresolved_method_calls']=sorted(set(unresolved));result.append(item)
+    return {'methods':result,'limit_reached':bool(pending),
+            'coverage':'Literal method calls only; dynamic AML and external objects may remain unresolved'}
+
+def firmware_reset_discovery(target,root=SYSFS):
+    scope=[]
+    for bdf in (target.bdf,target.bridge):
+        if bdf:
+            value=text(root/bdf/'firmware_node/path')
+            if value: scope.append(value)
+    result={'gpu_and_bridge_acpi_paths':scope,'status':'unavailable','objects':[],
+            'action':'inspection only; firmware methods are not executed'}
+    executable=shutil.which('iasl')
+    if not executable:
+        result['reason']='Install ACPICA iasl for static ACPI table decoding';return result
+    if os.geteuid(): result['reason']='Root is needed to read ACPI tables';return result
+    trusted_file(executable)
+    with tempfile.TemporaryDirectory(prefix='gpu-acpi-') as directory:
+        base=pathlib.Path(directory);tables=[]
+        for path in sorted(pathlib.Path('/sys/firmware/acpi/tables').rglob('*')):
+            if path.name=='DSDT' or path.name.startswith('SSDT'):
+                try: blob=path.read_bytes()
+                except OSError: continue
+                if len(blob)>16*1024*1024: raise RecoveryError('ACPI table exceeds discovery limit')
+                output=base/(('dynamic-' if path.parent.name=='dynamic' else '')+path.name+'.aml')
+                output.write_bytes(blob);tables.append(str(output))
+        if not tables: result['reason']='No readable DSDT/SSDT tables';return result
+        rc,out=run([executable,'-da',*tables],60)
+        fallback=[]
+        if rc:
+            # Some firmware defines duplicate objects across tables. Decode
+            # independently as a fallback; external-call resolution is partial.
+            deadline=time.monotonic()+60
+            for table in tables:
+                if time.monotonic()>=deadline: break
+                code,diagnostic=run([executable,'-d',table],min(10,max(1,deadline-time.monotonic())))
+                fallback.append({'table':pathlib.Path(table).stem,'returncode':code})
+        objects=[];decoded=list(base.glob('*.dsl'))
+        for path in decoded:
+            for item in asl_reset_objects(path.read_text(errors='replace'),include_helpers=True):
+                item['table']=path.stem
+                object_path=acpi_path(item['path'])
+                item['target_scope']=any(object_path[:-1]==acpi_path(p) for p in scope)
+                objects.append(item)
+        result.update(status='decoded' if rc==0 else 'partial decode',tables_decoded=len(decoded),
+                      objects=[o for o in objects if o['reset_related']],
+                      matching_scope_objects=[o['path'] for o in objects if o['target_scope'] and o['reset_related']],
+                      target_method_trace=trace_acpi_helpers(objects,scope),
+                      decoder_returncode=rc,independent_table_fallback=fallback,
+                      independent_perst_mapping='not established; declarations need resource and reset-scope verification')
+        if rc: result['decoder_diagnostic']=out[-2000:]
+    return result
 
 def nvidia_inventory(target):
     """Driver-reported enterprise capabilities; absence is explicitly unknown."""
@@ -220,6 +352,8 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
                 'sha256':hashlib.sha256(blob).hexdigest()})
         except OSError: report['acpi_tables'].append({'signature':table.name,'readable':False})
     matches=[]
+    if cfg.get('deep_discovery'):
+        report['firmware_reset_discovery']=firmware_reset_discovery(target,root)
     for path in sorted(pathlib.Path(profile_dir).glob('*.json')):
         item={'file':str(path),'status':'unavailable'}
         report['profiles'].append(item)
@@ -447,7 +581,9 @@ def main():
     parser.add_argument('--gpu',help='PCI BDF; automatically selected only when exactly one NVIDIA GPU exists')
     parser.add_argument('--config',help='JSON configuration; root-managed for privileged operations')
     parser.add_argument('--backend-only',action='store_true',help='Skip NVML reset; use configured lifecycle adapter')
+    parser.add_argument('--deep',action='store_true',help='Statically decode ACPI reset and power methods using ACPICA iasl')
     args=parser.parse_args();cfg=config(args.config,args.action in ('auto','recover','watch'))
+    if args.deep: cfg['deep_discovery']=True
     if args.action=='watch': return watch(cfg)
     found=discover()
     if args.action=='discover': print(json.dumps(found,indent=2));return

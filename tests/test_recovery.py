@@ -3,6 +3,37 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_acpi_helper_trace_follows_local_and_parent_methods(self):
+        objects=g.asl_reset_objects(r'''Scope (\_SB.PCI0) {
+          Method (SHRD, 0) { Return (One) }
+          Device (GPU0) {
+            Method (_RST, 0) { PRST () }
+            Method (PRST, 0) { ^SHRD () }
+          }
+          Device (NET0) { Method (PRST, 0) { Return (Zero) } }
+        }''',include_helpers=True)
+        trace=g.trace_acpi_helpers(objects,[r'\_SB.PCI0.GPU0'])
+        self.assertEqual({o['path'] for o in trace['methods']},{r'\_SB.PCI0.GPU0._RST',r'\_SB.PCI0.GPU0.PRST',r'\_SB.PCI0.SHRD'})
+    def test_static_acpi_reset_scope_and_gpio_property(self):
+        source=r'''DefinitionBlock ("", "DSDT", 2, "OEM", "TEST", 1) {
+          Scope (\_SB.PCI0) {
+            Device (RP01) { Method (_RST, 0) { Store (One, RST0) }
+              Device (GPU0) { Name (_DSD, Package () { "reset-gpios", Package () { 1, 0 } }) }
+            }
+            Device (RP02) { Method (_RST, 0) { Store (Zero, RST1) } }
+          }
+        }'''
+        objects=g.asl_reset_objects(source)
+        paths={o['path'] for o in objects}
+        self.assertEqual(paths,{r'\_SB.PCI0.RP01._RST',r'\_SB.PCI0.RP01.GPU0._DSD',r'\_SB.PCI0.RP02._RST'})
+        self.assertEqual(g.acpi_path(r'\_SB_.PCI0.RP01'),g.acpi_path(r'\_SB.PCI0.RP01'))
+    def test_static_acpi_ignores_comments_and_separates_unrelated_devices(self):
+        objects=g.asl_reset_objects(r'''Scope (\_SB) {
+          // Method (_RST, 0) { Bad () }
+          Device (NET0) { Method (_RST, 0) { ResetNetwork () } }
+          Device (GPU0) { Method (_PS0, 0) { PowerGpu () } }
+        }''')
+        self.assertEqual([o['path'] for o in objects],[r'\_SB.NET0._RST',r'\_SB.GPU0._PS0'])
     def test_enterprise_gpu_classes_included_but_switch_network_audio_excluded(self):
         temp,root=self.fixture()
         with temp:

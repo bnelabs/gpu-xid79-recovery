@@ -103,12 +103,15 @@ def pci_capabilities(data):
         if cap==1:
             item['name']='Power management';pm=number(pointer+4,2)
             item['power_state']=pm&3 if pm is not None else None
+            item['no_soft_reset']=bool(pm&8) if pm is not None else None
         elif cap==0x10:
             item['name']='PCI Express';flags=number(pointer+2,2);devcap=number(pointer+4,4)
             item['port_type']=(flags>>4)&15 if flags is not None else None
             item['flr_advertised']=bool(devcap&(1<<28)) if devcap is not None else None
             link=number(pointer+0x12,2)
             item['link_status']=hex(link) if link is not None else None
+            slot=number(pointer+0x14,4)
+            item['slot_power_controller']=bool(slot&2) if flags is not None and flags&0x100 and item['port_type'] in (4,6) and slot is not None else None
         elif cap in (5,0x11): item['name']='MSI' if cap==5 else 'MSI-X'
         result['standard'].append(item);pointer=data[pointer+1]&0xfc
     pointer=0x100;seen=set()
@@ -289,6 +292,8 @@ def nvidia_inventory(target):
             if gpu is not None:
                 result.update(query_available=True,name=gpu.findtext('product_name'),
                     architecture=gpu.findtext('product_architecture'),uuid=gpu.findtext('uuid'),
+                    recovery_action=gpu.findtext('gpu_recovery_action'),
+                    gsp_firmware=gpu.findtext('gsp_firmware_version'),vbios=gpu.findtext('vbios_version'),
                     mig_mode=gpu.findtext('mig_mode/current_mig'),
                     virtualization_mode=gpu.findtext('gpu_virtualization_mode/virtualization_mode'),
                     fabric_state=gpu.findtext('gpu_fabric_info/state'))
@@ -299,6 +304,28 @@ def nvidia_inventory(target):
     except CommandTimeout: raise
     except (OSError,ET.ParseError,RecoveryError) as e: result['error']=str(e)
     return result
+
+def management_inventory(target):
+    # Enumerate existing OS devices only; do not send SMBus or NSM messages.
+    return {'i2c_adapters':[{'adapter':p.name,'name':text(p/'name'),
+                            'depends_on_target_gpu':target.bdf in [parent.name for parent in p.resolve().parents]}
+                           for p in sorted(pathlib.Path('/sys/bus/i2c/devices').glob('i2c-*'))],
+            'nvidia_usb_candidates':[{'device':p.name,'vendor':text(p/'idVendor'),'product':text(p/'idProduct')}
+                for p in sorted(pathlib.Path('/sys/bus/usb/devices').glob('*'))
+                if text(p/'idVendor') in ('0955','10de')],
+            'mctp_links':[p.name for p in pathlib.Path('/sys/class/net').glob('*') if text(p/'type')=='290'],
+            'mapping_status':'Endpoint-to-GPU mapping and independent transport availability are not established by enumeration'}
+
+def reset_assessment(report):
+    reachable=report['config_space_reachable']
+    caps=report['pci_capabilities']['standard']
+    flr=next((c.get('flr_advertised') for c in caps if c['id']==0x10),None)
+    return {'pci_config_reachable':reachable,'flr_advertised':flr,
+            'nvml_recovery_action':report['nvidia'].get('recovery_action'),
+            'in_band_reset_transport':'unreachable' if reachable is False else 'reachable' if reachable else 'unknown',
+            'lost_link_route':'upstream PCI reset or independently mapped reset/power controller',
+            'selected_lifecycle_backend':bool(report['selected_backend']),
+            'note':'Advertised FLR does not establish recovery from a lost PCIe link'}
 
 def kernel_fallback_allowed(report,gpu_count):
     nvidia=report.get('nvidia',{})
@@ -334,6 +361,9 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'iommu_group':str((device/'iommu_group').resolve()) if (device/'iommu_group').exists() else None,
             'chipset_devices':[], 'acpi_tables':[],
             'nvidia':nvidia_inventory(target),
+            'management':management_inventory(target),
+            'upstream_capabilities':pci_capabilities(config_bytes(root/target.bridge/'config')) if target.bridge else None,
+            'd3cold_allowed_policy':text(device/'d3cold_allowed'),
             'profiles':[],'selected_backend':backend_for(target,cfg),
             'unverified_candidates_policy':'Inventory only; GPIO wiring and firmware reset scope require a verified adapter'}
     for entry in sorted(root.iterdir()):
@@ -399,6 +429,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
         report['selection']='verified profile: '+profile_id
     else:
         report['selection']='targeted NVML reset, then isolated kernel reset if available'
+    report['reset_assessment']=reset_assessment(report)
     return report
 
 def discovered_config(report,cfg):
@@ -532,12 +563,22 @@ def recover(target,cfg,backend_only=False):
             client_rc,clients=run(['/usr/bin/nvidia-smi','-i',target.bdf,'--query-compute-apps=pid','--format=csv,noheader'],15)
             if client_rc==0 and any(re.fullmatch(r'\d+',line.strip()) for line in clients.splitlines()):
                 raise RecoveryError('CUDA clients still use this GPU; configure services or drain them before recovery')
-            rc,out=run(['/usr/bin/nvidia-smi','--gpu-reset','-i',target.bdf],30)
+            mode=cfg.get('nvidia_reset_mode','auto')
+            if mode not in ('auto','flr','bus'): raise RecoveryError('nvidia_reset_mode must be auto, flr or bus')
+            action=(report.get('nvidia',{}).get('recovery_action') or '').lower()
+            bus_reset=mode=='bus' or mode=='auto' and action=='bus reset'
+            if bus_reset:
+                kernel_fallback_allowed(report,len(discover()))
+                if not target.isolated: raise RecoveryError('NVIDIA bus reset requires an isolated target bridge')
+            argv=['/usr/bin/nvidia-smi','--gpu-reset']+(['bus'] if bus_reset else [])+['-i',target.bdf]
+            rc,out=run(argv,30)
             if rc==0:
                 log(out);verify(target,cfg);return
             log(f'Targeted NVML reset unavailable: {out}')
             if re.search(r'\bin use\b|active process|currently being used',out,re.I):
                 raise RecoveryError('NVML reports active users; refusing to bypass its client protection')
+            if re.search(r'access blocked|permission denied|insufficient permission',out,re.I):
+                raise RecoveryError('NVIDIA reset was denied by OS permissions; no lower-level reset attempted')
         if backend:
             if not target.isolated: raise RecoveryError('Shared/unknown PCI reset scope; backend refused')
             env=dict(os.environ,GPU_BDF=target.bdf,GPU_BRIDGE=target.bridge,

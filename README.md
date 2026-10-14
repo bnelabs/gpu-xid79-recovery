@@ -35,6 +35,10 @@ sudo gpu-recovery auto --gpu 0000:07:00.0 --config /etc/gpu-recovery/config.json
 
 `recover` is an alias for `auto`. Both inspect the hardware on every run. If an installed platform profile matches and passes its compatibility check, the script can use that adapter. Otherwise, it tries a targeted NVIDIA reset, followed by a kernel reset of the GPU's PCI functions if needed.
 
+Discovery reports advertised FLR, PCI configuration reachability, the driver's recovery action, and upstream slot power-control capability. It also lists existing I2C adapters, NVIDIA USB candidates, and MCTP links for investigating out-of-band recovery. An I2C controller on the GPU itself depends on the GPU's PCIe connection.
+
+The NVIDIA reset normally uses FLR. If the driver reports `Bus Reset`, the script requests that mode on an isolated single-GPU setup. You can also set `"nvidia_reset_mode": "flr"` or `"bus"` in the config. An OS permission rejection stops the attempt.
+
 For a closer look at firmware reset controls, install ACPICA's `iasl` tool and run:
 
 ```bash

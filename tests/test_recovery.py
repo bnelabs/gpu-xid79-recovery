@@ -3,6 +3,24 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_lost_config_cannot_claim_an_inband_reset_transport(self):
+        report={'config_space_reachable':False,'pci_capabilities':{'standard':[]},
+                'nvidia':{'recovery_action':'Reset'},'selected_backend':None}
+        assessment=g.reset_assessment(report)
+        self.assertEqual(assessment['in_band_reset_transport'],'unreachable')
+        self.assertIsNone(assessment['flr_advertised'])
+    def test_driver_requested_bus_reset_targets_only_isolated_gpu(self):
+        target=g.Target('0000:07:00.0',['0000:07:00.0'],'0000:00:03.0',True,['flr'],{})
+        report={'selected_backend':None,'selection':'kernel','nvidia':{'recovery_action':'Bus Reset'}}
+        with patch.object(g,'inspect',return_value=target),patch.object(g,'explore',return_value=report),patch.object(g,'discover',return_value=[target.bdf]),patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'verify'),patch.object(g,'run',side_effect=[(0,''),(0,'reset done')]) as run:
+            g.recover(target,{})
+            self.assertEqual(run.call_args.args[0],['/usr/bin/nvidia-smi','--gpu-reset','bus','-i',target.bdf])
+    def test_os_denied_reset_cannot_fall_back_to_raw_pci_reset(self):
+        target=g.Target('0000:07:00.0',[],None,False,[],{})
+        report={'selected_backend':None,'selection':'kernel'}
+        with patch.object(g,'inspect',return_value=target),patch.object(g,'explore',return_value=report),patch.object(g.os,'geteuid',return_value=0),patch('builtins.open',mock_open()),patch.object(g.fcntl,'flock'),patch.object(g,'Services'),patch.object(g,'detached_reset') as reset,patch.object(g,'run',side_effect=[(0,''),(255,'GPU access blocked by the operating system')]):
+            with self.assertRaises(g.RecoveryError):g.recover(target,{})
+            reset.assert_not_called()
     def test_acpi_helper_trace_follows_local_and_parent_methods(self):
         objects=g.asl_reset_objects(r'''Scope (\_SB.PCI0) {
           Method (SHRD, 0) { Return (One) }

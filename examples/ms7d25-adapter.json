@@ -1,0 +1,13 @@
+{
+  "watch_gpus": ["0000:01:00.0"],
+  "services": [],
+  "validation_command": ["/usr/local/lib/gpu-recovery/cuda-probe"],
+  "backends": {
+    "0000:01:00.0": {
+      "command": ["/usr/local/sbin/gpu-recover-ms7d25"],
+      "match": {"board_name": "PRO Z690-A WIFI DDR4(MS-7D25)"},
+      "requires_single_gpu": true,
+      "prefer_backend": true
+    }
+  }
+}

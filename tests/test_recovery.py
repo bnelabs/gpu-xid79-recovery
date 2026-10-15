@@ -3,6 +3,15 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_d3_reset_declaration_is_retained_for_name_and_method(self):
+        for declaration in ('Name (_DSD, Package () {"FundamentalDeviceResetTriggeredOnD3ToD0", One})',
+                            'Method (_DSD, 0) { Return (Package () {"FundamentalDeviceResetTriggeredOnD3ToD0", One}) }'):
+            objects=g.asl_reset_objects('Scope (\\_SB.PCI0) {'+declaration+'}')
+            self.assertEqual(len(objects),1)
+            self.assertTrue(objects[0]['reset_related'])
+            self.assertTrue(objects[0]['path'].endswith('._DSD'))
+        self.assertEqual(g.asl_reset_objects('Name (_DSD, Package () {"unrelated", One})'),[])
+
     def test_link_training_evidence_preserves_missing_and_unimplemented_fields(self):
         raw=bytearray(256);raw[:2]=b'\x86\x80';raw[0x34]=0x40
         raw[0x40]=0x10;raw[0x42]=0x42  # PCIe v2 root port

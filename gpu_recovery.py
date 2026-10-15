@@ -219,7 +219,8 @@ def asl_reset_objects(source,include_helpers=False):
                 body=close+1;body_end=pairs.get(body) if body<end and tokens[body][0]=='{' else None
                 finish=body_end if body_end is not None else close
                 snippet=source[tokens[i].start():tokens[finish].end()]
-                relevant=(kind=='Method' and name.split('.')[-1] in ('_RST','_PR0','_PR3','_PRR','_PS0','_PS3','_ON','_OFF') or kind=='Name' and (name.split('.')[-1] in ('_PR0','_PR3','_PRR') or name.split('.')[-1]=='_DSD' and re.search(r'"(?:reset-gpios|reset-gpio|gpio-line-names)"',snippet)))
+                relevant=(kind=='Method' and name.split('.')[-1] in ('_RST','_PR0','_PR3','_PRR','_PS0','_PS3','_ON','_OFF') or kind=='Name' and (name.split('.')[-1] in ('_PR0','_PR3','_PRR') or name.split('.')[-1]=='_DSD' and re.search(r'"(?:reset-gpios|reset-gpio|gpio-line-names|FundamentalDeviceResetTriggeredOnD3ToD0)"',snippet)))
+                if name.split('.')[-1]=='_DSD' and re.search(r'"(?:reset-gpios|reset-gpio|gpio-line-names|FundamentalDeviceResetTriggeredOnD3ToD0)"',snippet): relevant=True
                 if relevant or include_helpers and kind in ('Method','PowerResource'):
                     result.append({'path':'\\'+'.'.join(path),'kind':kind,'source':snippet[:12000],
                                    'truncated':len(snippet)>12000,'reset_related':bool(relevant)})

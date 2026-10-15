@@ -55,3 +55,5 @@ This prints hashes, ELF sections, the embedded version, and signature-section fa
 - [Firmware container selection](https://github.com/NVIDIA/open-gpu-kernel-modules/blob/ca2d03e6fafd4d4b56b383497d931c25b283bfcf/kernel-open/common/inc/nv-firmware.h)
 - [NVIDIA reset requirements](https://docs.nvidia.com/deploy/nvidia-smi/index.html)
 - [Enterprise out-of-band management](https://github.com/NVIDIA/nvbmc-docs/blob/develop/nvidia/Platforms/gpu-pcie-card-mgmt.md)
+
+For firmware-declared reset on runtime power transitions, see the [ACPI D3-to-D0 review](acpi-d3-reset.md).

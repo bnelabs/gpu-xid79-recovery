@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "members": [
+    "GPU-PROVISION-PHYSICAL-IDENTITY"
+  ],
+  "controls": [
+    {
+      "id": "proposed-carrier",
+      "kind": "power",
+      "affected_members": [
+        "GPU-PROVISION-PHYSICAL-IDENTITY"
+      ],
+      "transport_survives_gpu_loss": false,
+      "controller_power_independent": false,
+      "mapping_physically_verified": false,
+      "exclusive_ownership": false,
+      "durable_ambiguous_operation_handling": false
+    }
+  ],
+  "supplies": [
+    {
+      "id": "slot-12v",
+      "member": "GPU-PROVISION-PHYSICAL-IDENTITY",
+      "disconnect_control": "proposed-carrier",
+      "off_voltage_measured": false,
+      "discharge_time_measured": false
+    },
+    {
+      "id": "slot-3v3",
+      "member": "GPU-PROVISION-PHYSICAL-IDENTITY",
+      "disconnect_control": "proposed-carrier",
+      "off_voltage_measured": false,
+      "discharge_time_measured": false
+    },
+    {
+      "id": "aux-12v",
+      "member": "GPU-PROVISION-PHYSICAL-IDENTITY",
+      "disconnect_control": "proposed-carrier",
+      "off_voltage_measured": false,
+      "discharge_time_measured": false
+    }
+  ],
+  "evidence": {
+    "all_power_and_backfeed_paths_inventoried": false,
+    "sequencing_vendor_approved": false,
+    "driver_teardown_bounded": false,
+    "tenant_and_fabric_drain_verified": false,
+    "fresh_identity_and_workload_verified": false,
+    "unrelated_devices_preserved": false,
+    "actual_lost_link_recovery_tested": false,
+    "repeat_fault_recovery_tested": false,
+    "host_boot_unchanged": false
+  }
+}

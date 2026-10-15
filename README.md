@@ -232,3 +232,8 @@ For hardware-free investigation of NVIDIA’s reset methods, see the [source rep
 - [Linux PCI error recovery](https://docs.kernel.org/PCI/pci-error-recovery.html)
 
 GPL-2.0-only.
+
+[Motherboard-independent recovery architecture](docs/independent-recovery-controller.md)
+defines an independent managed-carrier/BMC direction and an offline power-domain
+qualification checker. It is a proposed hardware contract, not a delivered
+universal reset device.

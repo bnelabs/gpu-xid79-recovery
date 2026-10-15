@@ -74,7 +74,7 @@ def main():
     results=[]
     for fault in ['success','wrong-port-map','no-independent-control','set-response-lost',
                   'clear-failed','restart-blocked','reconcile-resume','workload-failed',
-                  'fabric-failed','all-missing']:
+                  'fabric-failed','all-missing','watch-independent-fault','watch-health-hold','watch-health-stale']:
         for parent in ports.values():
             g.write_sysfs(g.subordinate_rescan_path(pathlib.Path(parent).name),'1')
         remap()
@@ -88,6 +88,9 @@ def main():
         fixture.STATE.write_text(json.dumps(dict(fault=injected,members=approved,parents=parents,
             ports=ports,gpu_ports=gpu_ports,asserted=[],services={u:True for u in units})))
         backend['domain'].pop('capsule',None)
+        backend['domain'].pop('health_command',None)
+        if fault.startswith('watch-'):
+            backend['domain']['health_command']=['/usr/bin/python3','/lab/switchtec_fixture.py']
         missing=[]
         if fault == 'all-missing':
             backend['domain']['capsule']='/var/lib/gpu-recovery-generic/switchtec-capsule.json'
@@ -106,7 +109,22 @@ def main():
                 fixture.STATE.write_text(json.dumps(state))
         error=None
         try:
-            if fault == 'reconcile-resume':g.resume(bdfs[0],cfg)
+            if fault.startswith('watch-'):
+                budget=pathlib.Path('/run/switchtec-watch-budget.json');budget.unlink(missing_ok=True)
+                watcher=g.Watcher(cfg,budget_path=budget)
+                original_identity=g.nvml_identity
+                def blocked_identity(bdf):raise AssertionError('In-band health probe must not run')
+                g.nvml_identity=blocked_identity
+                try:watcher.check(bdfs[0])
+                finally:g.nvml_identity=original_identity
+                if fault == 'watch-independent-fault':
+                    if watcher.failed or any(len(watcher.attempts[b])!=1 for b in bdfs):
+                        raise RuntimeError('Independent health failed to recover/charge complete domain')
+                else:
+                    if watcher.failed!=set(bdfs) or any(watcher.attempts.values()):
+                        raise RuntimeError('Invalid independent observation was not held without reset')
+                    error='Independent health refused; whole domain held'
+            elif fault == 'reconcile-resume':g.resume(bdfs[0],cfg)
             else:g.recover_bdf(bdfs[0],cfg)
         except g.RecoveryError as exc:error=str(exc)
         events=[json.loads(line) for line in fixture.EVENTS.read_text().splitlines()]
@@ -114,11 +132,12 @@ def main():
         starts=[e for e in events if e.get('verb')=='start']
         ledger=json.loads(g.SERVICE_STATE.read_text())['items'] if g.SERVICE_STATE.exists() else {}
         pending=len(json.loads(journal.read_text())['operations']) if journal.exists() else 0
-        success=fault in ('success','all-missing','reconcile-resume')
+        success=fault in ('success','all-missing','reconcile-resume','watch-independent-fault')
         expected={'wrong-port-map':'switchtec_targets','no-independent-control':'independent_reset_control',
             'set-response-lost':'Domain adapter failed','clear-failed':'Domain adapter failed',
             'restart-blocked':'Unresolved management reset','workload-failed':'Injected member workload failure',
-            'fabric-failed':'fabric_verified'}
+            'fabric-failed':'fabric_verified',
+            'watch-health-hold':'Independent health refused','watch-health-stale':'Independent health refused'}
         if success:
             passed=error is None and verified==bdfs and len(starts)==9 and not ledger and not pending
             passed=passed and set(counts().values())=={0} and len(commands)==(1 if fault=='reconcile-resume' else 8)
@@ -128,7 +147,7 @@ def main():
             passed=expected[fault] in (error or '') and not starts and bool(ledger)
             passed=passed and all(not (service_dir/u).exists() for u in units)
             n={'wrong-port-map':0,'no-independent-control':0,'set-response-lost':1,
-               'clear-failed':2,'restart-blocked':1,'workload-failed':8,'fabric-failed':8}[fault]
+               'clear-failed':2,'restart-blocked':1,'workload-failed':8,'fabric-failed':8,'watch-health-hold':0,'watch-health-stale':0}[fault]
             passed=passed and len(commands)==n and pending==(0 if n==0 else 1)
         passed=passed and boot==native('/proc/sys/kernel/random/boot_id') and (storage/'config').read_bytes()[:64]==storage_before
         results.append(dict(fault=fault,passed=bool(passed),error=error,commands=commands,

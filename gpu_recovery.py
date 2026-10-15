@@ -14,6 +14,7 @@ SERVICE_STATE = pathlib.Path('/var/lib/gpu-recovery-generic/services.json')
 class RecoveryError(RuntimeError): pass
 class CommandTimeout(RecoveryError): pass
 class IdentityMismatch(RecoveryError): pass
+class HealthUnavailable(RecoveryError): pass
 
 @dataclasses.dataclass
 class Target:
@@ -946,6 +947,51 @@ class Watcher:
                 raise IdentityMismatch('Domain contradicts pinned identity')
             self.identities[member]=uuid
         return sorted(approved)
+    def health_identity(self,bdf):
+        backend=self.cfg.get('backends',{}).get(bdf,{})
+        command=backend.get('domain',{}).get('health_command')
+        if command is None:return nvml_identity(bdf)
+        from domain_adapter import members
+        approved=members(sys.modules[__name__],backend)
+        if (backend.get('prefer_backend') is not True or bdf not in approved
+                or not isinstance(command,list) or not command
+                or not all(isinstance(v,str) and v for v in command)
+                or not pathlib.Path(command[0]).is_absolute()):
+            raise HealthUnavailable('Invalid independent domain health configuration')
+        try:
+            trusted_file(command[0])
+            nonce=os.urandom(16).hex()
+            boot=text('/proc/sys/kernel/random/boot_id')
+            if not boot:raise HealthUnavailable('Missing boot identity for independent health')
+            env=dict(os.environ,GPU_BDF=bdf,GPU_DOMAIN_MEMBERS=json.dumps(approved,sort_keys=True),
+                     GPU_RECOVERY_PHASE='health',GPU_RECOVERY_INTENT='observe',
+                     GPU_RECOVERY_BOOT_ID=boot,GPU_RECOVERY_NONCE=nonce)
+            rc,out=run(command,10,env)
+            if rc:raise HealthUnavailable('Independent health helper failed')
+            value=json.loads(out)
+            required={'schema':1,'nonce':nonce,'boot_id':boot,'members':approved,
+                      'independent_health':True}
+            if not isinstance(value,dict):raise HealthUnavailable('Independent health receipt is not an object')
+            for key,expected in required.items():
+                actual=value.get(key)
+                if type(actual) is not type(expected) or actual!=expected:
+                    raise HealthUnavailable('Independent health receipt mismatch: '+key)
+            states=value.get('states')
+            if (not isinstance(states,dict) or set(states)!=set(approved)
+                    or any(v not in ('healthy','recoverable_fault','hold') for v in states.values())):
+                raise HealthUnavailable('Independent health receipt has invalid member states')
+            if text('/proc/sys/kernel/random/boot_id')!=boot:
+                raise HealthUnavailable('Boot changed during independent health observation')
+        except (ValueError,TypeError,KeyError) as error:
+            raise HealthUnavailable('Malformed independent health receipt') from error
+        except RecoveryError as error:
+            if isinstance(error,(CommandTimeout,HealthUnavailable)):raise
+            raise HealthUnavailable('Independent health helper is unavailable') from error
+        # Any unresolved peer prevents recovery of this shared domain. A fault
+        # anywhere in the approved domain needs whole-domain recovery/validation.
+        if 'hold' in states.values():raise HealthUnavailable('Independent domain health requires a hold')
+        if 'recoverable_fault' in states.values():raise RecoveryError('Independent domain fault reported')
+        return approved[bdf]
     def refresh_capsule(self,bdf):
         backend=self.cfg.get('backends',{}).get(bdf,{})
         domain=backend.get('domain',{})
@@ -976,7 +1022,7 @@ class Watcher:
         try:
             if self.cfg.get('backends',{}).get(bdf,{}).get('domain',{}).get('capsule') and not (SYSFS/bdf).exists():
                 raise RecoveryError('Prepared GPU missing from PCI enumeration')
-            uuid=nvml_identity(bdf)
+            uuid=self.health_identity(bdf)
             if bdf in self.identities and self.identities[bdf]!=uuid:
                 hold_all();self.failed.update(affected)
                 log(f'{bdf}: UUID changed; services held, recovery refused');return
@@ -987,7 +1033,7 @@ class Watcher:
         except IdentityMismatch as error:
             hold_all();self.failed.update(affected)
             log(f'{bdf}: untrusted health identity; no reset attempted: {error}');return
-        except (CommandTimeout,OSError) as error:
+        except (CommandTimeout,HealthUnavailable,OSError) as error:
             hold_all();self.failed.update(affected)
             log(f'{bdf}: blocked/unavailable health command; no reset attempted: {error}');return
         except RecoveryError:pass

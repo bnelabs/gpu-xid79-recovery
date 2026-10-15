@@ -809,7 +809,7 @@
   "qemu_returncode": 0,
   "qemu_version": "QEMU emulator version 10.2.1 (Debian 1:10.2.1+ds-1ubuntu3.2)",
   "inputs_sha256": {
-    "gpu_recovery.py": "e4383b8f9202a9c1684c139961991c15779d54085aa24005dfb9722c34244dfa",
+    "gpu_recovery.py": "c69810ee27458a1f6934b838a6a51e5548bbf28600544bdd6cb882541f19c588",
     "domain_adapter.py": "c76356aa385c78cd948953b52ad6d4d5b27786718a9a29048599ace1d74a7ed4",
     "recovery_capsule.py": "7f42688771e131023856633f5044e7a44a78447ccf80dc9f20c62d54d71b4a30",
     "adapters/redfish_gpu.py": "4fdda2262c0c5fac4817c9888c53729ff7997ca660e65cc9a6c65cfb9d247a3f",

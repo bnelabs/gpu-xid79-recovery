@@ -115,7 +115,7 @@ reset or proof of complete power removal.
   An injected library failure propagates to the CLI. No management device opens.
   The fourth reserved request byte is uninitialized in the reviewed vendor source
   and is deliberately excluded from assertions; this is not wire certification.
-- `experiments/qemu/run_switchtec.py` runs ten fault cases each on x86-64 and ARM64
+- `experiments/qemu/run_switchtec.py` runs thirteen fault cases each on x86-64 and ARM64
   with eight synthetic endpoints in four physical-port groups and unrelated NVMe.
   The production controller, adapter, journal and capsule code execute unchanged.
   A modeled CLEAR performs a real guest-kernel bridge reset. SET assertion,
@@ -137,3 +137,7 @@ python3 experiments/qemu/run_switchtec.py --kernel /path/to/x86-kernel \
 Sources: [vendor CLI](https://github.com/Microsemi/switchtec-user/blob/99da3bc799b84ff53abc726c2fdea01379b3c687/cli/fabric.c),
 [vendor serializer](https://github.com/Microsemi/switchtec-user/blob/99da3bc799b84ff53abc726c2fdea01379b3c687/lib/fabric.c),
 [transport implementation](https://github.com/Microsemi/switchtec-user/blob/99da3bc799b84ff53abc726c2fdea01379b3c687/lib/switchtec.c).
+
+The domain watcher can optionally use a separate [independent health helper](independent-health.md).
+The three additional QEMU cases cover successful fault detection without an
+in-band query, an unresolved peer and a stale observation nonce.

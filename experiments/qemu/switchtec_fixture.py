@@ -48,6 +48,22 @@ def main():
             asserted.remove(port)
             fixture.STATE.write_text(json.dumps(cfg))
         return
+    if os.environ.get('GPU_RECOVERY_PHASE') == 'health':
+        if json.loads(os.environ['GPU_DOMAIN_MEMBERS']) != cfg['members']:
+            raise RuntimeError('Independent health mapping differs')
+        for parent in cfg['ports'].values():
+            if not pathlib.Path(parent).exists():
+                raise RuntimeError('Independent health lost mapped parent')
+        states = {bdf: 'recoverable_fault' for bdf in cfg['members']}
+        if cfg['fault'] == 'watch-health-hold':
+            states[sorted(states)[-1]] = 'hold'
+        value = {'schema': 1, 'nonce': os.environ['GPU_RECOVERY_NONCE'],
+            'boot_id': g.text('/proc/sys/kernel/random/boot_id'),
+            'members': cfg['members'], 'independent_health': True, 'states': states}
+        if cfg['fault'] == 'watch-health-stale':value['nonce'] = 'old-observation'
+        fixture.event(kind='independent-health', states=states)
+        print(json.dumps(value))
+        return
     stream = io.StringIO()
     with contextlib.redirect_stdout(stream):
         fixture.lifecycle()

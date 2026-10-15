@@ -251,3 +251,8 @@ modules, racks and cloud ownership. It is research, not recovery certification.
 The [GPEmu assessment](docs/gpemu-assessment.md) includes a reproducible CPU-only
 check of upstream timing workloads. GPEmu can support future drain/restart
 experiments; it does not emulate NVIDIA firmware or PCIe recovery.
+
+[Independent domain health](docs/independent-health.md) lets a qualified external
+health helper trigger the existing budgeted recovery path without first invoking
+a potentially wedged NVML query. Unknown state retains whole-domain holds;
+post-recovery CUDA and platform validation remain required.

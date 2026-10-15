@@ -163,3 +163,7 @@ Initial guest runs correctly failed root-managed path checks because generated
 initramfs directories inherited a group-writable umask. The lab now normalizes
 its executable directories and includes the root directory's permissions in
 the archive. The controller's trust policy was retained.
+
+An optional read-only `domain.health_command` provides the separate
+[independent watcher health protocol](independent-health.md). Its observation
+receipt is not a preflight receipt and does not grant reset authority.

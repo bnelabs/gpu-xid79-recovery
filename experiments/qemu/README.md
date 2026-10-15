@@ -91,3 +91,5 @@ not establish that real NVIDIA firmware obeys it after Xid79.
 References: [QEMU PCI test device](https://www.qemu.org/docs/master/specs/pci-testdev.html),
 [ARM virt platform](https://www.qemu.org/docs/master/system/arm/virt.html),
 [QEMU reset framework](https://www.qemu.org/docs/master/devel/reset.html).
+
+For actual NVIDIA core-module failed-probe tests against a deliberately dead vfio-user endpoint, see [NVIDIA probe lab](NVIDIA-PROBE.md). This runs real module code inside the VM without emulating a functioning GPU.

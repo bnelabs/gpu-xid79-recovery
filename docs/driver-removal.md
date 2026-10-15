@@ -48,3 +48,5 @@ would not implement recovery. See [current source](https://github.com/NVIDIA/ope
 No teardown patch has been validated across all these cases here. The generic
 controller stops after a timeout. This bounds its own attempt; it cannot release
 a stuck kernel lock or create a missing physical reset path.
+
+The [NVIDIA probe lab](../experiments/qemu/NVIDIA-PROBE.md) now runs real core-module code against a dead vfio-user endpoint. It covers early all-ones probe rejection, not teardown of a GPU that previously initialized.

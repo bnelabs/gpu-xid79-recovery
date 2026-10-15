@@ -11,7 +11,7 @@ Discovery recognizes NVIDIA display and compute-accelerator device classes, incl
 | RTX 3090 / MS-7D25 platform adapter | No-reboot recovery from lost PCI access; CUDA checks and automatic recovery of fresh Xid79 events passed. A failed recovery and recurring faults were also observed. |
 | Generic NVIDIA/kernel/ACPI reset paths | Controller tests and interface discovery; recovery on other hardware remains unverified. |
 | RTX 4090, RTX 5090, and enterprise GPU paths | Source and firmware-interface review; no recovery hardware tests in this project. |
-| Experimental driver teardown patch | Module build and modeled C tests; not loaded or hardware-validated. |
+| Experimental driver teardown patch | Module build, modeled C tests, and core-module failed-probe tests inside VMs; no physical GPU validation. |
 | QEMU integration lab | Real Linux guests on x86-64 Q35 and ARM64 virt: isolated bridge resets and shared-bridge refusal passed using synthetic PCI devices. |
 
 See [GPU families and firmware](docs/gpu-families.md) for the reviewed paths. Neither source review, emulation, nor a successful build establishes recovery on an untested GPU. The default installer does not install the experimental driver patch.

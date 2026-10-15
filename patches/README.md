@@ -50,3 +50,5 @@ The source review includes a later compute-only GB206 report that remains outsid
 This patch supplies no physical reset transport. Restoring a lost PCIe link still needs a working upstream reset or an independently controlled reset/power path, followed by fresh driver initialization and CUDA correctness checks.
 
 See [driver-removal research](../docs/driver-removal.md) for remaining UVM and callback-lifetime tests and the current limits of proposed GPU emulators.
+
+The candidate core module was subsequently exercised inside isolated Linux guests against dead NVIDIA-identity PCI fixtures. All five ID profiles rejected early probe without hanging. No module was loaded on the physical GPU host. This does not validate the patched modeset/UVM teardown paths; see the [probe lab](../experiments/qemu/NVIDIA-PROBE.md).

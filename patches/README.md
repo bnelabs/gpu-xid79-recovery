@@ -48,3 +48,5 @@ The no-progress heuristic can misclassify an unusually long legitimate stall. Th
 The source review includes a later compute-only GB206 report that remains outside the original series' demonstrated coverage. No recovery guarantee is made for Ada, Blackwell, enterprise fabrics, or other boards.
 
 This patch supplies no physical reset transport. Restoring a lost PCIe link still needs a working upstream reset or an independently controlled reset/power path, followed by fresh driver initialization and CUDA correctness checks.
+
+See [driver-removal research](../docs/driver-removal.md) for remaining UVM and callback-lifetime tests and the current limits of proposed GPU emulators.

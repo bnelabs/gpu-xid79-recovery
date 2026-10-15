@@ -605,6 +605,10 @@ def verify(target,cfg):
     domain,tail=bus.split(':',1)
     if f'{int(domain,16):04x}:{tail.lower()}'!=target.bdf: raise RecoveryError('NVML returned the wrong GPU')
     validation=cfg.get('validation_command')
+    if not validation and cfg.get('cuda_validation',True):
+        probe=pathlib.Path(__file__).resolve().with_name('cuda_probe.py')
+        trusted_file(probe)
+        validation=[sys.executable,str(probe),'--uuid',uuid]
     if validation:
         trusted_file(validation[0])
         rc,result=run(validation,60,dict(os.environ,GPU_BDF=target.bdf,CUDA_VISIBLE_DEVICES=uuid))

@@ -107,7 +107,7 @@ sudo gpu-firmware-policy --live --runtime-acpi
 
 The combined report includes `runtime_policy_correlations`: matching offsets and widths from x64 PCD getter/store sequences and the live DSDT layout. These are static code matches; the scanner does not execute firmware or establish which GPU a stored slot setting controls.
 
-Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML and can run a CUDA test you provide.
+Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML, then runs a small CUDA kernel in a fresh process by default.
 
 ## Configure GPU workers
 
@@ -127,7 +127,7 @@ Edit `/etc/gpu-recovery/config.json` to list the services that use your GPU:
 
 The default service list is empty. Only listed services that were running are stopped and restarted. Active CUDA clients or an NVIDIA “in use” response will stop the standard recovery path.
 
-`validation_command` is optional. It receives `GPU_BDF` and `CUDA_VISIBLE_DEVICES` set to the selected GPU's UUID, and must return a nonzero exit code on failure. Without it, recovery checks NVML access only.
+`validation_command` is optional and replaces the built-in probe. It receives `GPU_BDF` and `CUDA_VISIBLE_DEVICES` set to the selected GPU's UUID, and must return a nonzero exit code on failure. Without it, the built-in probe verifies UUID, fresh context creation, host/device transfers, and 1,024 computed results. It needs the installed CUDA driver and its PTX JIT support; no toolkit, nvcc, or Python CUDA package is needed. Set `"cuda_validation": false` to explicitly use NVML-only validation when no custom command is configured. That mode reports that CUDA execution was not verified. See [probe details and limits](docs/cuda-validation.md).
 
 Configuration files and executables used during recovery, including their parent directories, must be owned by root and not writable by group or others.
 

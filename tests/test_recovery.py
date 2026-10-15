@@ -314,6 +314,19 @@ class RecoveryTests(unittest.TestCase):
         with patch.object(g,'run',side_effect=[(0,'GPU-test, 00000000:07:00.0, Test GPU'),(0,'passed')]) as run,patch.object(g,'trusted_file'):
             g.verify(target,{'validation_command':['/trusted/cuda']})
             self.assertEqual(run.call_args.args[2]['CUDA_VISIBLE_DEVICES'],'GPU-test')
+    def test_default_cuda_failure_cannot_be_reported_as_recovery_success(self):
+        target=g.Target('0000:07:00.0',[],None,False,[],{})
+        with patch.object(g,'run',side_effect=[(0,'GPU-test, 00000000:07:00.0, Test GPU'),(1,'kernel mismatch')]) as run,patch.object(g,'trusted_file'):
+            with self.assertRaisesRegex(g.RecoveryError,'kernel mismatch'):g.verify(target,{})
+            self.assertIn('cuda_probe.py',run.call_args.args[0][1])
+            self.assertEqual(run.call_args.args[0][-2:],['--uuid','GPU-test'])
+            self.assertEqual(run.call_args.args[2]['CUDA_VISIBLE_DEVICES'],'GPU-test')
+    def test_explicit_cuda_optout_only_performs_nvml_check(self):
+        target=g.Target('0000:07:00.0',[],None,False,[],{})
+        with patch.object(g,'run',return_value=(0,'GPU-test, 00000000:07:00.0, Test GPU')) as run,patch.object(g,'log') as log:
+            g.verify(target,{'cuda_validation':False})
+            self.assertEqual(run.call_count,1)
+            self.assertIn('CUDA execution has not been verified',log.call_args.args[0])
     def test_untrusted_executable_refused(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(g.RecoveryError):g.trusted_file(pathlib.Path(d)/'missing')

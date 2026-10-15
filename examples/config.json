@@ -1,5 +1,6 @@
 {
   "watch_gpus": [],
   "services": [],
+  "cuda_validation": true,
   "backends": {}
 }

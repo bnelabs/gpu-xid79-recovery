@@ -1,0 +1,28 @@
+{
+  "cases_passed": 14,
+  "tu102_all_ones_returns_success": true,
+  "gh100_assert_failure_can_be_overwritten": true,
+  "gb100_access_timeout_continues_to_reset": true,
+  "gh100_gb100_return_final_deassert_wait_status": true,
+  "upstream_commit": "ca2d03e6fafd4d4b56b383497d931c25b283bfcf",
+  "inputs": [
+    {
+      "path": "src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_tu102.c",
+      "sha256": "df312262254d712e8340c2d428bb5869354756f41b7a5758aac2f1825fdf2550"
+    },
+    {
+      "path": "src/nvidia/src/kernel/gpu/gsp/arch/hopper/kernel_gsp_gh100.c",
+      "sha256": "5ee22f09c650ab70764be05828cc58e1237436bada08c91898aeadc011d37ea2"
+    },
+    {
+      "path": "src/nvidia/src/kernel/gpu/gsp/arch/blackwell/kernel_gsp_gb100.c",
+      "sha256": "cd92274258afcabd32a784a5bda539b7550d6c9a79019ad8bca2964a4769efd0"
+    }
+  ],
+  "kind": "Actual C reset bodies with prescribed wait outcomes and modeled register IO",
+  "breakpoint_model": "Non-halting release-style behavior; counted for assertions",
+  "predicates_executed": false,
+  "firmware_executed": false,
+  "hardware_recovery_verified": false,
+  "complete_driver_executed": false
+}

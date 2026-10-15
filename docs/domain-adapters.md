@@ -6,9 +6,10 @@ the hardware and tenant lifecycle; the controller holds services, checks the
 approved scope, runs the adapter and verifies the whole domain before releasing
 any service holds. Single-GPU consumer adapters keep their existing interface.
 
-This is an orchestration interface, not a supplied BMC, NVSwitch or hypervisor
-implementation. No physical enterprise recovery has been demonstrated by this
-change.
+This is an orchestration interface. The optional [Redfish adapter](redfish-adapter.md)
+now supplies a BMC transport, but still needs a platform lifecycle helper. No
+NVSwitch or hypervisor lifecycle implementation is supplied, and no physical
+enterprise recovery has been demonstrated.
 
 ## Configuration
 

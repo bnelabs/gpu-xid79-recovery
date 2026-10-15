@@ -14,6 +14,12 @@ Discovery recognizes NVIDIA display and compute-accelerator device classes, incl
 | Experimental driver teardown patch | Module build, modeled C tests, and core-module failed-probe tests inside VMs; no physical GPU validation. |
 | QEMU integration lab | Real Linux guests on x86-64 Q35 and ARM64 virt: isolated bridge resets and shared-bridge refusal passed using synthetic PCI devices. |
 
+An optional [Redfish GPU adapter](docs/redfish-adapter.md) adds BMC GPU-resource
+discovery and scoped reset requests through the local-domain contract. It requires
+a platform lifecycle helper; no physical enterprise recovery is claimed. The
+[eight-device enterprise emulation](docs/enterprise-emulation.md) exercises it
+with real guest-kernel PCI resets and injected management/fabric failures.
+
 See [GPU families and firmware](docs/gpu-families.md) for the reviewed paths. Neither source review, emulation, nor a successful build establishes recovery on an untested GPU. The default installer does not install the experimental driver patch.
 
 The [QEMU lab](experiments/qemu/README.md) runs the controller on both CPU architectures without access to host devices. It tests kernel reset behavior and isolation; it does not emulate NVIDIA firmware or prove recovery from a physical Xid79 fault.
@@ -110,6 +116,18 @@ The combined report includes `runtime_policy_correlations`: matching offsets and
 Configured GPU workers are stopped before recovery and restarted only after successful verification. Failed recovery keeps them held; desired state persists across controller restarts. The script checks the GPU through NVML, then runs a small CUDA kernel in a fresh process by default.
 
 `check` verifies a GPU without resetting it. `hold` stops configured workloads without requiring a currently visible GPU; `resume` verifies the GPU and releases its holds without a reset. See [commands and configuration](docs/service-lifecycle.md).
+
+## Assess deployment gaps
+
+```bash
+gpu-recovery assess --config /etc/gpu-recovery/config.json
+```
+
+This read-only JSON assessment covers discovered and watched GPUs, including
+missing devices, UUID provisioning, workload configuration and reset-path gaps.
+It does not certify recovery support. See the [cross-platform service design and
+qualification plan](docs/universal-service.md) for how the firmware research
+informs diagnostics and what consumer and enterprise hardware still needs testing.
 
 ## Configure GPU workers
 

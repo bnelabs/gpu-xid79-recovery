@@ -1,0 +1,13 @@
+{
+  "outcome_cases": 512,
+  "status_checked": true,
+  "return_code_always_success": true,
+  "release_after_failed_assertion": 0,
+  "kind": "Unchanged upstream async sequencer with modeled command results",
+  "upstream_commit": "b6cddce5ddab2afeed95142da608ed5865db96f2",
+  "source": "nsmd/nsmDbusIfaceOverride/nsmResetIface.hpp",
+  "source_sha256": "71b28b189a2e541c29d7c1e00f74502874ae1fba2d06f0cf54eb4f9d643f8472",
+  "method_sha256": "4d8e91fcf0e712a50c938cffb1897f20733326d32a93727dd2eef266adf17d8d",
+  "hardware_recovery_verified": false,
+  "limitation": "No actual asynchronous transport scheduling, MCU firmware, CPLD, or GPU is emulated"
+}

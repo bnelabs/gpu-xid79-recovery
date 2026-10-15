@@ -1,0 +1,471 @@
+{
+  "kind": "Eight-device enterprise orchestration fault campaign",
+  "architecture": "aarch64",
+  "kernel": "6.12.107+deb13-arm64",
+  "members": {
+    "0000:02:01.0": "GPU-00000001-2222-3333-4444-555555555555",
+    "0000:02:02.0": "GPU-00000002-2222-3333-4444-555555555555",
+    "0000:04:01.0": "GPU-00000003-2222-3333-4444-555555555555",
+    "0000:04:02.0": "GPU-00000004-2222-3333-4444-555555555555",
+    "0000:06:01.0": "GPU-00000005-2222-3333-4444-555555555555",
+    "0000:06:02.0": "GPU-00000006-2222-3333-4444-555555555555",
+    "0000:08:01.0": "GPU-00000007-2222-3333-4444-555555555555",
+    "0000:08:02.0": "GPU-00000008-2222-3333-4444-555555555555"
+  },
+  "cases": [
+    {
+      "fault": "success",
+      "passed": true,
+      "error": null,
+      "reset_posts": 8,
+      "service_starts": 9,
+      "held_records": 0,
+      "verified_members": 8,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "wrong-serial",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: GPU serial differs from provisioned identity",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "cpu-resource",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: Mapped resource is not the expected GPU Processor",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "node-action",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: Reset action escapes the mapped GPU resource",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "unsupported",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: Configured GPU restart is not advertised by this BMC",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "ownership-denied",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: Domain preflight receipt mismatch: exclusive_local_control",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "partial-reset",
+      "passed": true,
+      "error": "Domain adapter failed; no fallback attempted",
+      "reset_posts": 3,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "task-failed",
+      "passed": true,
+      "error": "Domain adapter failed; no fallback attempted",
+      "reset_posts": 1,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "task-timeout",
+      "passed": true,
+      "error": "Domain adapter failed; no fallback attempted",
+      "reset_posts": 1,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "dropped-response",
+      "passed": true,
+      "error": "Domain adapter failed; no fallback attempted",
+      "reset_posts": 1,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "workload-failed",
+      "passed": true,
+      "error": "Injected member workload failure",
+      "reset_posts": 8,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 7,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "fabric-failed",
+      "passed": true,
+      "error": "Domain validation command failed; no further reset attempted: Domain validation receipt mismatch: fabric_verified",
+      "reset_posts": 8,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 8,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "stale-validation",
+      "passed": true,
+      "error": "Domain validation command failed; no further reset attempted: Domain validation receipt mismatch: nonce",
+      "reset_posts": 8,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 8,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "resume",
+      "passed": true,
+      "error": null,
+      "reset_posts": 0,
+      "service_starts": 9,
+      "held_records": 0,
+      "verified_members": 8,
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    }
+  ],
+  "passed": true,
+  "nvidia_recovery_verified": false,
+  "substitutions": [
+    "QEMU PCI testdevs replace GPUs; no NVIDIA firmware executes",
+    "Guest BMC maps Redfish POST to real guest-kernel bridge resets",
+    "Fixture lifecycle helper models exclusive ownership and fabric receipts",
+    "File-backed systemctl model; real production service-hold ledger",
+    "Counter checks replace NVML/CUDA and tenant workload execution"
+  ],
+  "qemu_returncode": 0,
+  "qemu_version": "QEMU emulator version 10.2.1 (Debian 1:10.2.1+ds-1ubuntu3.2)",
+  "inputs_sha256": {
+    "gpu_recovery.py": "8bc902b06082de573a4b7a38c64e24ba937d1caa58e8c6be4ca9519ede865ce1",
+    "domain_adapter.py": "94ce2dfa841061cbe04ef5c66cfea41690066aa1feb67c9c7bad9278c8e22efb",
+    "adapters/redfish_gpu.py": "9894329ae1af4c67e6cf70c2585232235d0c9ae7a986a64bc48bcf4aa44af507",
+    "experiments/qemu/enterprise_guest.py": "706ecfa17c171ead86a2765fd34ac511d1e2540167d809b7a060a2411764fae1",
+    "experiments/qemu/enterprise_fixture.py": "6c4d17d4708ffd4d68f76115dcffb8a3da2be3c1f9be856e26522f9e209a5654",
+    "experiments/qemu/run_enterprise.py": "fbdcf4c06159fcb66b6450f52d15249801c2eb3b8c1af039090743ead5b34c6d"
+  },
+  "kernel_sha256": "9c37ace54ef7e1919411fd912e9f34d6982ddd7f4c8ef3c8aee56f4c4d70db67"
+}

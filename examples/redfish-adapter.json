@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "endpoint": "https://bmc.example.invalid",
+  "token_file": "/etc/gpu-recovery/bmc-session-token",
+  "ca_file": "/etc/gpu-recovery/bmc-ca.pem",
+  "request_timeout": 5,
+  "task_timeout": 30,
+  "lifecycle_command": ["/usr/local/lib/platform-recovery/lifecycle"],
+  "targets": {
+    "0000:41:00.0": {
+      "uuid": "GPU-11111111-2222-3333-4444-555555555555",
+      "serial": "REPLACE_WITH_PHYSICAL_GPU_SERIAL",
+      "resource": "/redfish/v1/Systems/REPLACE_WITH_SYSTEM/Processors/REPLACE_WITH_GPU",
+      "reset_type": "ForceRestart"
+    }
+  }
+}

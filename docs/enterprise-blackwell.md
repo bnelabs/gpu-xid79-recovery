@@ -34,3 +34,18 @@ After an action, verify physical identity, driver initialization, fresh CUDA exe
 ## What the emulator establishes
 
 The current NVIDIA guest lab exercises rejection of an endpoint whose BAR reads return all ones. It exits before family-specific initialization. Changing that endpoint's PCI ID to B200 or B300 would not test their firmware, coherence, NVSwitch lifecycle or recovery. No Blackwell hardware validation is claimed from that lab.
+
+## Offline test of the actual reset functions
+
+`experiments/replay_blackwell_flr.py` extracts the two GB100 functions from a hash-pinned upstream source file and compiles them with AddressSanitizer and UndefinedBehaviorSanitizer. Configuration transport, register addresses, field macros and the clock are modeled. It does not compile the complete driver or establish real register semantics.
+
+Seven cases passed: failed trigger read with no write, failed trigger write, successful trigger, immediately ready configuration space, delayed readiness, persistent all-ones reads, and persistent read errors. Both permanently unreachable readiness cases reach the modeled timeout. The failed trigger read returns its error without attempting a write. This confirms the control-flow dependency on configuration access; it provides no recovery path around a dead link.
+
+```bash
+python3 experiments/replay_blackwell_flr.py /path/to/open-gpu-kernel-modules \
+  --output /tmp/blackwell-flr.json
+```
+
+The next useful hardware experiment needs an independently reachable reset endpoint and its verified target mapping. NVIDIA's [PCIe-card management configuration](https://github.com/NVIDIA/nvbmc-docs/blob/develop/nvidia/Platforms/gpu-pcie-card-mgmt.md) associates endpoint UUIDs with inventory and device-index properties. Enumeration of an MCTP interface alone cannot supply these associations. They must come from platform inventory and be reconciled with physical GPU identity before a reset.
+
+NVIDIA also distinguishes a GPU reset recommendation from a node-reboot recommendation in [GPU Recovery Action](https://docs.nvidia.com/deploy/nvidia-smi/index.html#gpu-recovery-action). A reset restoring PCI visibility does not demonstrate that a host with fatal UVM state is ready to resume workloads. The controller must preserve that distinction when judging recovery success.

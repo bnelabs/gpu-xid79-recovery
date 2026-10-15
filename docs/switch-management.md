@@ -50,13 +50,14 @@ needs its own platform-specific lifecycle review.
 
 ## Backend requirements
 
-A future adapter needs verified switch identity, physical port mapping, command
+An adapter needs verified switch identity, physical port mapping, command
 support, all affected partitions/hosts, driver quiescence and an independent
 transport. It must reconcile an ambiguous SET timeout before assuming reset is
 released. A successful reply is not successful GPU recovery: re-enumeration,
 physical GPU identity, driver initialization and fresh CUDA execution must pass,
 with fabric checks where relevant.
 
-The existing generic multi-GPU/shared-scope guards remain in place. This update
-adds inventory only. No switch command was sent, no switch backend was installed,
-and no NVIDIA recovery through Switchtec hardware has been tested here.
+The existing generic multi-GPU/shared-scope guards remain in place. The optional [Switchtec adapter](switchtec-adapter.md) now implements an explicit
+provisioned PAX per-port path with durable ambiguity handling. No physical switch
+command was sent, and no NVIDIA recovery through Switchtec hardware has been
+tested here.

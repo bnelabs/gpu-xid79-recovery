@@ -237,3 +237,8 @@ GPL-2.0-only.
 defines an independent managed-carrier/BMC direction and an offline power-domain
 qualification checker. It is a proposed hardware contract, not a delivered
 universal reset device.
+
+The optional [Switchtec adapter](docs/switchtec-adapter.md) supplies a provisioned
+managed-switch per-port hot-reset path with durable assertion/release tracking.
+It requires a qualified independent transport and site lifecycle helper; physical
+Switchtec/NVIDIA recovery remains untested.

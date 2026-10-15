@@ -1,0 +1,1294 @@
+{
+  "schema": 1,
+  "method": "Static ELF container and bounded embedded-image inspection",
+  "firmware_executed": false,
+  "hardware_accessed": false,
+  "recovery_verified": false,
+  "caveats": [
+    "Strings are search anchors, not proven handlers or commands.",
+    "ELF extents are structural candidates, not decoded archive ownership.",
+    "Signature names do not prove runtime support or reset capability."
+  ],
+  "images": [
+    {
+      "file": "gsp-535.113.01.bin",
+      "bytes": 38061600,
+      "sha256": "e30231ec0d317021770e16c81ae2c0553f728d0344248827582f78132c9447d4",
+      "version": "535.113.01",
+      "payload_offset": 64,
+      "payload_size": 38043648,
+      "signature_sections": [
+        ".fwsignature_cc_gh100",
+        ".fwsignature_gh100",
+        ".fwsignature_ad10x",
+        ".fwsignature_ga10x"
+      ],
+      "embedded_riscv_elfs": [
+        {
+          "payload_offset": 225280,
+          "size": 135168,
+          "entry": "0xffffffff93000000",
+          "sha256": "54f586a9c6c1d9bd799251064c9ac9528c83248717cc9f8fcdad10149d6703cf",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 360448,
+          "size": 135168,
+          "entry": "0xffffffff93000000",
+          "sha256": "d7b514170558381f39e442f672a8baf41afa87aec9cb4feed391754ee5779bf8",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 495616,
+          "size": 44934,
+          "entry": "0x100417a",
+          "sha256": "8ee64599e82a0043a4a6001943e190910c20295721d768c77a8e26bdf2ea59af",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 524288,
+          "size": 13766656,
+          "entry": "0x1bb4264",
+          "sha256": "f8e004d9a8a6c588ffc88608ecb644b43049ebaa7b44a320b1b48f2f9606c7d8",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        }
+      ],
+      "rejected_elf_candidates": 1,
+      "recovery_string_candidates": [
+        {
+          "payload_offset": 12938840,
+          "file_offset": 12938904,
+          "text": "FULL CHIP RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 12938856,
+          "file_offset": 12938920,
+          "text": "BUS RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 12938872,
+          "file_offset": 12938936,
+          "text": "GC6 RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 12938912,
+          "file_offset": 12938976,
+          "text": "UCODE RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13233712,
+          "file_offset": 13233776,
+          "text": "FORCED_LINKTRAIN",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13237440,
+          "file_offset": 13237504,
+          "text": "WATCHDOG",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13237616,
+          "file_offset": 13237680,
+          "text": "enable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13237632,
+          "file_offset": 13237696,
+          "text": "disable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13237704,
+          "file_offset": 13237768,
+          "text": "soft disable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13307648,
+          "file_offset": 13307712,
+          "text": "RmDisableGen2LinkRetraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13307784,
+          "file_offset": 13307848,
+          "text": "RMSecBusResetEnable",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13308248,
+          "file_offset": 13308312,
+          "text": "oobhub_trigger_reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13308488,
+          "file_offset": 13308552,
+          "text": "doHotReset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13308504,
+          "file_offset": 13308568,
+          "text": "exitHotReset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13315464,
+          "file_offset": 13315528,
+          "text": "RmMClkP5LinkTrainingWckStopClks",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13406560,
+          "file_offset": 13406624,
+          "text": "Row Remapper: New row marked for remapping, reset gpu to activate.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13412360,
+          "file_offset": 13412424,
+          "text": "RMFbLinkTraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13478816,
+          "file_offset": 13478880,
+          "text": "NV_PPRIV_SYS_PRI_ERROR_CODE_FECS_PRI_RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13569928,
+          "file_offset": 13569992,
+          "text": "RMSkipGrResetForInstSys",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13572888,
+          "file_offset": 13572952,
+          "text": "RMCtxSwPgReset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13579408,
+          "file_offset": 13579472,
+          "text": "Graphics Exception on BE %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13596144,
+          "file_offset": 13596208,
+          "text": "Graphics Exception on GPC %d CROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13596784,
+          "file_offset": 13596848,
+          "text": "Graphics Exception on GPC %d ZROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13731632,
+          "file_offset": 13731696,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx).",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13738584,
+          "file_offset": 13738648,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx) - retirement address mismatch",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13738688,
+          "file_offset": 13738752,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal pointer error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13738776,
+          "file_offset": 13738840,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal address retrieval error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13749088,
+          "file_offset": 13749152,
+          "text": "Row Remapper: (0x%016llx) - Attempting to remap a row that is already pending remapping. Remapping will occur when the GPU is reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13778512,
+          "file_offset": 13778576,
+          "text": "NVLink: fatal error detected on link %u(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13778928,
+          "file_offset": 13778992,
+          "text": "RMNvLinkTxTrainControl",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13779920,
+          "file_offset": 13779984,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal interrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13779992,
+          "file_offset": 13780056,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal notificationinterrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13780072,
+          "file_offset": 13780136,
+          "text": "NVLink MINION: link %u interrupts disabled due to fatal MINION error: INTR_CODE = 0x%x, SUBCODE = 0x%x",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13786776,
+          "file_offset": 13786840,
+          "text": "RMResetPerfMonD4",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13817416,
+          "file_offset": 13817480,
+          "text": "Non-fatal violation of provisioned InfoROM wear limit, no recovery required.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13822232,
+          "file_offset": 13822296,
+          "text": "RmWatchDogTimeOut",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13822256,
+          "file_offset": 13822320,
+          "text": "RmWatchDogInterval",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13822280,
+          "file_offset": 13822344,
+          "text": "RmRcWatchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13822528,
+          "file_offset": 13822592,
+          "text": "RmForceFullRcRecovery",
+          "truncated": false
+        },
+        {
+          "payload_offset": 13849288,
+          "file_offset": 13849352,
+          "text": "NVRM_RPC: Watchdog detected a hang due to some issue in other VM",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37684792,
+          "file_offset": 37684856,
+          "text": "channel_reset_delay",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37686824,
+          "file_offset": 37686888,
+          "text": "GPU currently in full-chip reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37689448,
+          "file_offset": 37689512,
+          "text": "Reset required",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37689952,
+          "file_offset": 37690016,
+          "text": "Fatal/unrecoverable error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37690120,
+          "file_offset": 37690184,
+          "text": "Nvlink Training Error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37744800,
+          "file_offset": 37744864,
+          "text": "Fatal/unrecoverable error [NV_ERR_FATAL_ERROR]",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37745264,
+          "file_offset": 37745328,
+          "text": "GPU currently in full-chip reset [NV_ERR_GPU_IN_FULLCHIP_RESET]",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37749912,
+          "file_offset": 37749976,
+          "text": "Nvlink Training Error [NV_ERR_NVLINK_TRAINING_ERROR]",
+          "truncated": false
+        },
+        {
+          "payload_offset": 37750776,
+          "file_offset": 37750840,
+          "text": "Reset required [NV_ERR_RESET_REQUIRED]",
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "file": "gsp-570.144.bin",
+      "bytes": 63571696,
+      "sha256": "a8c3ebeed280323aedb51c061f321e73379cce7a9ae643a33dd03915df027f7f",
+      "version": "570.144",
+      "payload_offset": 64,
+      "payload_size": 63541248,
+      "signature_sections": [
+        ".fwsignature_gb20x",
+        ".fwsignature_cc_gb10x",
+        ".fwsignature_gb10x",
+        ".fwsignature_cc_gh100",
+        ".fwsignature_gh100",
+        ".fwsignature_ad10x",
+        ".fwsignature_ga10x"
+      ],
+      "embedded_riscv_elfs": [
+        {
+          "payload_offset": 417792,
+          "size": 151552,
+          "entry": "0xffffffff93000000",
+          "sha256": "ae284d5a7c2f792eb87fc07df6bee522d89fc06881b3050fd53db358e89fab26",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 569344,
+          "size": 151552,
+          "entry": "0xffffffff93000000",
+          "sha256": "e350d8f598163e24d184c3cded1cf9ca386ddd2595533c1709405d2b9aa26d95",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 720896,
+          "size": 184320,
+          "entry": "0xffffffff93000000",
+          "sha256": "5604a462e0166d857b60c273c7cebdcc2f73b80d6872ab7a5138902a8eb13e39",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 905216,
+          "size": 184320,
+          "entry": "0xffffffff93000000",
+          "sha256": "82ecc72c409340865dd2d95364e7880f425b4e964c0d277562f60e7f8dc5953f",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1089536,
+          "size": 49152,
+          "entry": "0x10023d8",
+          "sha256": "4c2ded04c739fa34dc08c587809af06c3e0a68da63ec0cafae8beb628aad2fe1",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1138688,
+          "size": 15085568,
+          "entry": "0x19e67a4",
+          "sha256": "6c36425881780a14e0c3f03622784367a11892d64ee131ef2f2ce3029d7a4ff3",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 16224256,
+          "size": 1097728,
+          "entry": "0x10818d4",
+          "sha256": "b0d010001f2e3e6c1e36055205db5258a1ca29cbc7dbe333afac391e3197c17f",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 17321984,
+          "size": 61440,
+          "entry": "0x1002916",
+          "sha256": "394697662c1412ca8cdedceea5a0fcdde97493d65f60bdfcf048477b57abb683",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        }
+      ],
+      "rejected_elf_candidates": 0,
+      "recovery_string_candidates": [
+        {
+          "payload_offset": 796648,
+          "file_offset": 796712,
+          "text": "mnocWorkerReset(mnocWorker) == LibosOk",
+          "truncated": false
+        },
+        {
+          "payload_offset": 980968,
+          "file_offset": 981032,
+          "text": "mnocWorkerReset(mnocWorker) == LibosOk",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14720920,
+          "file_offset": 14720984,
+          "text": "RmDisableGen2LinkRetraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14721880,
+          "file_offset": 14721944,
+          "text": "RMSecBusResetEnable",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14724512,
+          "file_offset": 14724576,
+          "text": "RmMClkP5LinkTrainingWckStopClks",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14765584,
+          "file_offset": 14765648,
+          "text": "RMFbLinkTraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14771568,
+          "file_offset": 14771632,
+          "text": "RmAllowChannelCreationOnPendingReset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14771728,
+          "file_offset": 14771792,
+          "text": "RmForceFullRcRecovery",
+          "truncated": false
+        },
+        {
+          "payload_offset": 14772320,
+          "file_offset": 14772384,
+          "text": "%s-RISCV instance %d fatal error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15112352,
+          "file_offset": 15112416,
+          "text": "RMSkipGrResetForInstSys",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15115200,
+          "file_offset": 15115264,
+          "text": "Graphics Exception on BE %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15116952,
+          "file_offset": 15117016,
+          "text": "Graphics Exception on GPC %d CROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15124792,
+          "file_offset": 15124856,
+          "text": "Graphics Exception on GPC %d ZROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15125984,
+          "file_offset": 15126048,
+          "text": "Graphics FECS Exception: UCODE Fatal Error (0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15126080,
+          "file_offset": 15126144,
+          "text": "Graphics FECS Exception: UCODE Fatal Error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15129424,
+          "file_offset": 15129488,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx).",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15146416,
+          "file_offset": 15146480,
+          "text": "Row Remapper: (0x%016llx) - Attempting to remap a row that is already pending remapping. Remapping will occur when the GPU is reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15148800,
+          "file_offset": 15148864,
+          "text": "Row Remapper: New row (0x%016llx) marked for remapping, reset gpu to activate.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15149392,
+          "file_offset": 15149456,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx) - retirement address mismatch",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15149496,
+          "file_offset": 15149560,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal pointer error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15149584,
+          "file_offset": 15149648,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal address retrieval error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15164360,
+          "file_offset": 15164424,
+          "text": "RMNvLinkTxTrainControl",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15164824,
+          "file_offset": 15164888,
+          "text": "RMNvlinkNonfatalRecovery",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15164856,
+          "file_offset": 15164920,
+          "text": "RMNvlinkLazyRecoveryCYA",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165000,
+          "file_offset": 15165064,
+          "text": "NVLink: fatal error detected on link %u(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165096,
+          "file_offset": 15165160,
+          "text": "FULL CHIP RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165112,
+          "file_offset": 15165176,
+          "text": "BUS RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165128,
+          "file_offset": 15165192,
+          "text": "GC6 RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165168,
+          "file_offset": 15165232,
+          "text": "UCODE RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165208,
+          "file_offset": 15165272,
+          "text": "NVLink MINION: link %u interrupts disabled due to fatal MINION error: INTR_CODE = 0x%x, SUBCODE = 0x%x",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165312,
+          "file_offset": 15165376,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal interrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15165384,
+          "file_offset": 15165448,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal notificationinterrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166088,
+          "file_offset": 15166152,
+          "text": "MSE-RISCV instance 0 fatal error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166128,
+          "file_offset": 15166192,
+          "text": " Fatal  ",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166144,
+          "file_offset": 15166208,
+          "text": "MSE_WATCHDOG",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166320,
+          "file_offset": 15166384,
+          "text": "Nonfatal",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166360,
+          "file_offset": 15166424,
+          "text": "%s %s XC%01u i%01u Link %02d : Link Down While Active.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15166928,
+          "file_offset": 15166992,
+          "text": "RMResetPerfMonD4",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15169656,
+          "file_offset": 15169720,
+          "text": "RmLpwrFsmPerStepStatsInfra",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15169688,
+          "file_offset": 15169752,
+          "text": "RmLpwrFsmPerStepStatsCtrl",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15174352,
+          "file_offset": 15174416,
+          "text": "Non-fatal violation of provisioned InfoROM wear limit, no recovery required.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15175808,
+          "file_offset": 15175872,
+          "text": "WATCHDOG",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176208,
+          "file_offset": 15176272,
+          "text": "RmWatchDogTimeOut",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176232,
+          "file_offset": 15176296,
+          "text": "RmWatchDogInterval",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176256,
+          "file_offset": 15176320,
+          "text": "RmRcWatchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176736,
+          "file_offset": 15176800,
+          "text": "enable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176752,
+          "file_offset": 15176816,
+          "text": "disable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15176824,
+          "file_offset": 15176888,
+          "text": "soft disable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15179968,
+          "file_offset": 15180032,
+          "text": "NVRM_RPC: Watchdog detected a hang due to some issue in other VM",
+          "truncated": false
+        },
+        {
+          "payload_offset": 15191120,
+          "file_offset": 15191184,
+          "text": "FORCED_LINKTRAIN",
+          "truncated": false
+        },
+        {
+          "payload_offset": 16834512,
+          "file_offset": 16834576,
+          "text": "channel_reset_delay",
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "file": "gsp_ga10x.bin",
+      "bytes": 27043992,
+      "sha256": "c420726d2c76c55f028a59f67ebd7a906563ef807c945bb3baa9e88c36bf334b",
+      "version": "615.71.09",
+      "payload_offset": 64,
+      "payload_size": 26992640,
+      "signature_sections": [
+        ".fwsignature_cc_gr10x",
+        ".fwsignature_gr10x",
+        ".fwsignature_gb20y",
+        ".fwsignature_cc_gb20x",
+        ".fwsignature_gb20x",
+        ".fwsignature_cc_gb10x",
+        ".fwsignature_gb10y",
+        ".fwsignature_gb10x",
+        ".fwsignature_cc_gh100",
+        ".fwsignature_gh100",
+        ".fwsignature_ad10x",
+        ".fwsignature_ga10x"
+      ],
+      "embedded_riscv_elfs": [
+        {
+          "payload_offset": 434176,
+          "size": 184320,
+          "entry": "0xffffffff93000000",
+          "sha256": "2c68840ae6ed6d53061d366fdb7668694024987af1a06070a14c72bebfb0edd8",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 618496,
+          "size": 204800,
+          "entry": "0xffffffff93000000",
+          "sha256": "15e7a81817cc31fe627e3d760afeb1ee4236aa927fcea6b7c2e82ae13c621367",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 823296,
+          "size": 212992,
+          "entry": "0xffffffff93000000",
+          "sha256": "d833123ad9f0120b2ad41c59882b9a44feb1eb1bcdee07472769176ebcc2a262",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1036288,
+          "size": 184320,
+          "entry": "0xffffffff93000000",
+          "sha256": "cac67a1e966b5f227bff755bbc04e2c61b18d4a39c47d1f9198d7a843d5d5ddf",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1220608,
+          "size": 212992,
+          "entry": "0xffffffff93000000",
+          "sha256": "1c88a9738b9fcd22bdb0a5fdf0382d75906e5edf6ffa920731ab551742cb2b2d",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1433600,
+          "size": 212992,
+          "entry": "0xffffffff93000000",
+          "sha256": "0ff2680d8b721346d4bc06271b7a8f9ba2ebf6aa0b22a859a65712063c1172c8",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1646592,
+          "size": 212992,
+          "entry": "0xffffffff93000000",
+          "sha256": "ec1516d44e4039d10c2db18f7eca105e23c6848efbe6f368cfe79fb53894e3fc",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1859584,
+          "size": 40960,
+          "entry": "0x10027cc",
+          "sha256": "d39ad475a0c69d58ae3df9caccb057bb7d911bebcd66c8525e4acf3e783696d4",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1904640,
+          "size": 45056,
+          "entry": "0x100283e",
+          "sha256": "1098df836b5add2f63eadc8b538bae1fd6782b42da67ccf1e5f3663280f7754c",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 1953792,
+          "size": 17305600,
+          "entry": "0x1ad6e3e",
+          "sha256": "d1d28e36a5d7c42db827b4ff311ac15405c4d30efe98db9875f540908b41093d",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 19263488,
+          "size": 737280,
+          "entry": "0x107838a",
+          "sha256": "54f5f4edbc7ab94f237d59ea19ac99d139a0234dd81aa83d578c0e8518815473",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        },
+        {
+          "payload_offset": 20004864,
+          "size": 57344,
+          "entry": "0x10029a2",
+          "sha256": "5eec8f76dd3efc80d67b9a21013a4f5815926e306af1f42d4d986903acebffc7",
+          "architecture_mapping": "unresolved",
+          "section_table_valid": false,
+          "extent_kind": "ELF header and program-file ranges; not a standalone ELF guarantee"
+        }
+      ],
+      "rejected_elf_candidates": 0,
+      "recovery_string_candidates": [
+        {
+          "payload_offset": 1884248,
+          "file_offset": 1884312,
+          "text": "%s(%u): Failed to reset SK watchdog, rc=%x",
+          "truncated": false
+        },
+        {
+          "payload_offset": 1887288,
+          "file_offset": 1887352,
+          "text": "%s(%u): init task panic is fatal, not continuing init task",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17039256,
+          "file_offset": 17039320,
+          "text": "recoverable",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17044576,
+          "file_offset": 17044640,
+          "text": "RmDisableGen2LinkRetraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17045576,
+          "file_offset": 17045640,
+          "text": "C2C ERROR: C2C link training failed in self-hosted system",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17045712,
+          "file_offset": 17045776,
+          "text": "RMSecBusResetEnable",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17045800,
+          "file_offset": 17045864,
+          "text": "PCIE_RESET_FAILURE: Classification: %d, Recommendation: Perform SBR",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17045872,
+          "file_offset": 17045936,
+          "text": "Possible PCIE_RESET_FAILURE: Classification: %d, Recommendation: Unknown",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17048192,
+          "file_offset": 17048256,
+          "text": "RmMClkP5LinkTrainingWckStopClks",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17059664,
+          "file_offset": 17059728,
+          "text": "RMFbLinkTraining",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17066352,
+          "file_offset": 17066416,
+          "text": "RmAllowChannelCreationOnPendingReset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17066664,
+          "file_offset": 17066728,
+          "text": "RmForceFullRcRecovery",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17067456,
+          "file_offset": 17067520,
+          "text": "TKE Watchdog Timeout",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17067680,
+          "file_offset": 17067744,
+          "text": "%s-RISCV instance %d unknown fatal error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17067728,
+          "file_offset": 17067792,
+          "text": "%s-RISCV instance %d %s fatal error (mask: 0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17068776,
+          "file_offset": 17068840,
+          "text": "Row Remapper: New row (0x%016llx) marked for remapping, reset gpu to activate.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17068856,
+          "file_offset": 17068920,
+          "text": "Row Remapper: New row marked for remapping, reset gpu to activate.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17069744,
+          "file_offset": 17069808,
+          "text": "Row Remapper: (0x%016llx) - Attempting to remap a row that is already pending remapping. Remapping will occur when the GPU is reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17070080,
+          "file_offset": 17070144,
+          "text": "Bank Remapper: New bank marked for remapping, reset gpu to activate.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17071608,
+          "file_offset": 17071672,
+          "text": "RmResetFsmStateTimeoutUs",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17073880,
+          "file_offset": 17073944,
+          "text": "LTC Data Fatal",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17073944,
+          "file_offset": 17074008,
+          "text": "SYSLTC Data Fatal",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17334552,
+          "file_offset": 17334616,
+          "text": "RMSkipGrResetForInstSys",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17337216,
+          "file_offset": 17337280,
+          "text": "Graphics Exception on BE %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17343952,
+          "file_offset": 17344016,
+          "text": "Graphics Exception on GPC %d CROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17344592,
+          "file_offset": 17344656,
+          "text": "Graphics Exception on GPC %d ZROP %d: Graphics is hung, FATAL!!",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17349768,
+          "file_offset": 17349832,
+          "text": "Graphics FECS Exception: UCODE Fatal Error (0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17350192,
+          "file_offset": 17350256,
+          "text": "Graphics FECS Exception: UCODE Fatal Error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17359816,
+          "file_offset": 17359880,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx).",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17360272,
+          "file_offset": 17360336,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page (0x%016llx) - retirement address mismatch",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17360376,
+          "file_offset": 17360440,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal pointer error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17360464,
+          "file_offset": 17360528,
+          "text": "Dynamic Page Retirement: Fatal Error, unable to retire page - internal address retrieval error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17403680,
+          "file_offset": 17403744,
+          "text": "bus reset",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17405128,
+          "file_offset": 17405192,
+          "text": "RMNvLinkTxTrainControl",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17405672,
+          "file_offset": 17405736,
+          "text": "RMNvlinkNonfatalRecovery",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17405704,
+          "file_offset": 17405768,
+          "text": "RMNvlinkLazyRecoveryCYA",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406432,
+          "file_offset": 17406496,
+          "text": "NVLink: fatal error detected on link %u(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406528,
+          "file_offset": 17406592,
+          "text": "FULL CHIP RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406544,
+          "file_offset": 17406608,
+          "text": "BUS RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406560,
+          "file_offset": 17406624,
+          "text": "GC6 RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406600,
+          "file_offset": 17406664,
+          "text": "UCODE RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406616,
+          "file_offset": 17406680,
+          "text": "GPU RC RESET",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406656,
+          "file_offset": 17406720,
+          "text": "NVLink MINION: link %u interrupts disabled due to fatal MINION error: INTR_CODE = 0x%x, SUBCODE = 0x%x",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406760,
+          "file_offset": 17406824,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal interrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17406832,
+          "file_offset": 17406896,
+          "text": "NVLink: MINION Falcon interrupts disabled due to fatal notificationinterrupt",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407016,
+          "file_offset": 17407080,
+          "text": "MSE-RISCV instance 0 unknown fatal error",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407064,
+          "file_offset": 17407128,
+          "text": "MSE-RISCV instance 0 %s fatal error (mask: 0x%x)",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407368,
+          "file_offset": 17407432,
+          "text": " Fatal  ",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407384,
+          "file_offset": 17407448,
+          "text": " Link-Fatal ",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407400,
+          "file_offset": 17407464,
+          "text": "Nonfatal",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17407656,
+          "file_offset": 17407720,
+          "text": "NETIR_LINK_DOWN",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17408000,
+          "file_offset": 17408064,
+          "text": "MSE_WATCHDOG",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17408064,
+          "file_offset": 17408128,
+          "text": "%s %s XC%01u i%01u Link %02u : Link Down While Active.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17409064,
+          "file_offset": 17409128,
+          "text": "RMResetPerfMonD4",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17412216,
+          "file_offset": 17412280,
+          "text": "RmLpwrFsmPerStepStatsInfra",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17412248,
+          "file_offset": 17412312,
+          "text": "RmLpwrFsmPerStepStatsCtrl",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17417384,
+          "file_offset": 17417448,
+          "text": "Non-fatal violation of provisioned InfoROM wear limit, no recovery required.",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17428312,
+          "file_offset": 17428376,
+          "text": "RmWatchDogTimeOut",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17428336,
+          "file_offset": 17428400,
+          "text": "RmWatchDogInterval",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17428360,
+          "file_offset": 17428424,
+          "text": "RmRcWatchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17428376,
+          "file_offset": 17428440,
+          "text": "RmEnableGrWatchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17435208,
+          "file_offset": 17435272,
+          "text": "FORCED_LINKTRAIN",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17438216,
+          "file_offset": 17438280,
+          "text": "enable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17438232,
+          "file_offset": 17438296,
+          "text": "disable watchdog",
+          "truncated": false
+        },
+        {
+          "payload_offset": 17440432,
+          "file_offset": 17440496,
+          "text": "RmDispOverrideDpTunClkRecoveryDelay",
+          "truncated": false
+        },
+        {
+          "payload_offset": 19828280,
+          "file_offset": 19828344,
+          "text": "channel_reset_delay",
+          "truncated": false
+        }
+      ]
+    }
+  ]
+}

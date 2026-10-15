@@ -2,7 +2,18 @@
 
 A Linux script that attempts to bring an NVIDIA GPU back online after Xid79 without rebooting. It checks the board, PCIe topology, and available reset methods before starting recovery.
 
-Works with NVIDIA GPU and compute-accelerator device classes, including GeForce, RTX/Quadro, Tesla, and data-center GPUs. Recovery depends on the hardware and driver. Some failures still need a power cycle.
+Discovery recognizes NVIDIA display and compute-accelerator device classes, including GeForce, RTX/Quadro, Tesla, and data-center GPUs. Recognition does not establish recovery support.
+
+**This is not a universal recovery solution.** Hardware validation currently covers an RTX 3090 on an MS-7D25 board using its separate platform adapter. The generic controller chooses among available reset interfaces; it cannot guarantee that a board exposes a working reset or power control. Some failures still need a power cycle.
+
+| Component | Validation so far |
+| --- | --- |
+| RTX 3090 / MS-7D25 platform adapter | No-reboot recovery from lost PCI access; CUDA checks and automatic recovery of fresh Xid79 events passed. A failed recovery and recurring faults were also observed. |
+| Generic NVIDIA/kernel/ACPI reset paths | Controller tests and interface discovery; recovery on other hardware remains unverified. |
+| RTX 4090, RTX 5090, and enterprise GPU paths | Source and firmware-interface review; no recovery hardware tests in this project. |
+| Experimental driver teardown patch | Module build and modeled C tests; not loaded or hardware-validated. |
+
+See [GPU families and firmware](docs/gpu-families.md) for the reviewed paths. Neither source review, emulation, nor a successful build establishes recovery on an untested GPU. The default installer does not install the experimental driver patch.
 
 ## Install
 
@@ -165,7 +176,7 @@ python3 -m unittest discover -s tests -v
 
 Tests cover device discovery, reset scope, timeouts, driver rebinds, profile selection, enterprise GPU checks, and workload validation.
 
-Hardware testing so far covers an RTX 3090 on an MS-7D25 board using its platform adapter. It recovered from unreachable PCI configuration space and passed NVML and CUDA transfer checks without rebooting. Other boards, enterprise fabrics, MIG, and virtualized deployments still need hardware testing.
+The hardware validation above includes recovery from unreachable PCI configuration space, NVML and CUDA transfer checks, and automatic handling of fresh Xid79 events. The adapter has also failed a recovery attempt, and successful recovery did not prevent later faults. Other boards, enterprise fabrics, MIG, and virtualized deployments still need hardware testing.
 
 An [experimental driver teardown candidate](patches/README.md) is available separately. It has compiled-source tests and a module build, but has not been loaded or hardware-validated.
 

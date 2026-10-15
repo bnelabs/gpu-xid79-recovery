@@ -1,0 +1,28 @@
+{
+  "cases_passed": 11,
+  "tu102_transport_status_propagated": false,
+  "gh100_gb100_transport_error_propagated": true,
+  "all_ones_success_requires_external_validation": true,
+  "upstream_commit": "ca2d03e6fafd4d4b56b383497d931c25b283bfcf",
+  "inputs": [
+    {
+      "path": "src/nvidia/src/kernel/gpu/bif/arch/turing/kernel_bif_tu102.c",
+      "sha256": "deb0b0aa06023fd73e233e6c727e2fb2a2574ed764b990239605ee18a910a289",
+      "function": "kbifTriggerFlr_TU102"
+    },
+    {
+      "path": "src/nvidia/src/kernel/gpu/bif/arch/hopper/kernel_bif_gh100.c",
+      "sha256": "c1dd061c19f133145607e1576e9664ecfbab095640c63a596cfc7ad0e3c4b15f",
+      "function": "kbifTriggerFlr_GH100"
+    },
+    {
+      "path": "src/nvidia/src/kernel/gpu/bif/arch/blackwell/kernel_bif_gb100.c",
+      "sha256": "6063e9e91bfd933f676f7677dd6c86631e4945c00c72f70b40027bf26fe8edcd",
+      "function": "kbifTriggerFlr_GB100"
+    }
+  ],
+  "kind": "Actual upstream function bodies with modeled transport and register fields",
+  "scope": "Selected TU102/GH100/GB100 functions only; HAL dispatch and complete driver not executed",
+  "hardware_recovery_verified": false,
+  "firmware_emulated": false
+}

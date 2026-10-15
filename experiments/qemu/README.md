@@ -55,6 +55,11 @@ Each run writes a JSON result and a `.console.log` beside it. A failed assertion
 missing guest result, or QEMU failure returns a nonzero exit code. Guest execution
 has a 180-second timeout, with console output retained even on timeout.
 
+For the separate slot shutdown experiment, add `--slot-power` without `--shared`.
+It checks removal scope and boot continuity, and records whether the target
+returns after power-on. Its `passed` field is not a recovery result. Both tested
+platforms removed the target but failed to restore it; see [results](../../docs/slot-power.md).
+
 ## Results recorded on October 15, 2026
 
 | Platform | Guest kernel | Isolated target | Shared bridge |

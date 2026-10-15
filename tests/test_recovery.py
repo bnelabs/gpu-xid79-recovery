@@ -3,6 +3,30 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_hotplug_scope_includes_bridge_and_peer_not_only_gpu(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base=pathlib.Path(directory);root=base/'pci';root.mkdir();slots=base/'slots';slots.mkdir()
+            bridge=base/'tree'/'0000:01:00.0';bridge.mkdir(parents=True)
+            for name in ('0000:02:01.0','0000:02:02.0'):(bridge/name).mkdir()
+            for path in (bridge,*bridge.iterdir()):(root/path.name).symlink_to(path)
+            slot=slots/'arbitrary-label';slot.mkdir();(slot/'address').write_text('0000:01:00');(slot/'power').write_text('1')
+            target=g.Target('0000:02:01.0',['0000:02:01.0'],bridge.name,False,[],{})
+            report=g.hotplug_inventory(target,root,slots)
+            self.assertFalse(report[0]['target_functions_only'])
+            self.assertEqual(report[0]['affected_bdfs'],['0000:01:00.0','0000:02:01.0','0000:02:02.0'])
+            (slot/'address').write_text('0000:09:00')
+            self.assertEqual(g.hotplug_inventory(target,root,slots),[])
+
+    def test_hotplug_multifunction_slot_scope_does_not_claim_full_power_cycle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base=pathlib.Path(directory);root=base/'pci';root.mkdir();slots=base/'slots';slots.mkdir()
+            for name in ('0000:01:00.0','0000:01:00.1'):(root/name).mkdir()
+            slot=slots/'42';slot.mkdir();(slot/'address').write_text('0000:01:00');(slot/'power').write_text('1')
+            target=g.Target('0000:01:00.0',['0000:01:00.0','0000:01:00.1'],None,False,[],{})
+            report=g.hotplug_inventory(target,root,slots)[0]
+            self.assertTrue(report['target_functions_only'])
+            self.assertFalse(report['full_gpu_power_removal_verified'])
+
     def test_shared_acpi_reset_resource_is_found_outside_gpu_namespace(self):
         source=r'''Scope (\_SB.PCI0) {
           PowerResource (RST0, 0, 0) { Method (_RST, 0) { HELP () } Method (HELP, 0) { Return (One) } }

@@ -20,6 +20,8 @@ The [QEMU lab](experiments/qemu/README.md) runs the controller on both CPU archi
 
 [Out-of-band reset research](docs/out-of-band-reset.md) covers NVIDIA's NSM fundamental-reset command, management transport discovery, and the remaining requirements for an enterprise backend. The included codec replay makes no hardware calls.
 
+The explorer also maps [PCIe hotplug slot controls](docs/slot-power.md) to their affected PCI devices. These are reported for investigation; automatic recovery does not toggle slot power.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

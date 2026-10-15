@@ -350,6 +350,28 @@ def nvidia_inventory(target):
     except (OSError,ET.ParseError,RecoveryError) as e: result['error']=str(e)
     return result
 
+def hotplug_inventory(target,root=SYSFS,slots_root=pathlib.Path('/sys/bus/pci/slots')):
+    """Read slot mappings and scope only; power files can remove whole subtrees."""
+    device=(root/target.bdf).resolve()
+    ancestors={p.name for p in [device,*device.parents] if BDF.fullmatch(p.name)}
+    devices={p.name:p.resolve() for p in root.iterdir() if BDF.fullmatch(p.name)}
+    result=[]
+    for slot in sorted(slots_root.glob('*')):
+        address=text(slot/'address')
+        # A PCI slot address omits the function number; never match by slot label.
+        if not re.fullmatch(r'[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}',address):continue
+        members=[name for name in ancestors if name[:-2]==address]
+        if not members:continue
+        scope=set()
+        for name,path in devices.items():
+            if any(parent.name[:-2]==address and BDF.fullmatch(parent.name)
+                   for parent in [path,*path.parents]):scope.add(name)
+        result.append({'slot':slot.name,'address':address,'power_path':str(slot/'power') if (slot/'power').exists() else None,
+                       'power':text(slot/'power') or None,'affected_bdfs':sorted(scope),
+                       'target_functions_only':bool(scope) and scope==set(target.slot),
+                       'full_gpu_power_removal_verified':False})
+    return result
+
 def management_inventory(target):
     # Enumerate existing OS devices only; do not send SMBus or NSM messages.
     return {'i2c_adapters':[{'adapter':p.name,'name':text(p/'name'),
@@ -407,6 +429,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'chipset_devices':[], 'acpi_tables':[],
             'nvidia':nvidia_inventory(target),
             'management':management_inventory(target),
+            'hotplug_slots':hotplug_inventory(target,root),
             'upstream_capabilities':pci_capabilities(config_bytes(root/target.bridge/'config')) if target.bridge else None,
             'd3cold_allowed_policy':text(device/'d3cold_allowed'),
             'profiles':[],'selected_backend':backend_for(target,cfg),

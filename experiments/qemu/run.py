@@ -8,7 +8,7 @@ def copy_file(source,root,destination=None):
  destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source.resolve(),destination)
 
 
-def build_root(root,userspace):
+def build_root(root,userspace,slot_power=False):
  if userspace:
   shutil.copytree(userspace,root,dirs_exist_ok=True,symlinks=True)
  else:
@@ -29,7 +29,7 @@ def build_root(root,userspace):
  # The real production controller is copied unchanged into the guest.
  repo=pathlib.Path(__file__).resolve().parents[2]
  copy_file(repo/'gpu_recovery.py',root,'lab/gpu_recovery.py')
- copy_file(pathlib.Path(__file__).with_name('guest.py'),root,'lab/guest.py')
+ copy_file(pathlib.Path(__file__).with_name('slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
  stub=root/'usr/bin/nvidia-smi'
  stub.write_text('#!/bin/sh\ncase "$*" in *--query-compute-apps=pid*) exit 0;; *) exit 1;; esac\n');stub.chmod(0o755)
  init=root/'init';init.write_text('''#!/bin/sh
@@ -48,11 +48,13 @@ def main():
  parser.add_argument('--arch',choices=['x86_64','aarch64'],default='x86_64')
  parser.add_argument('--userspace',type=pathlib.Path,help='Extracted matching guest userspace; required for ARM64')
  parser.add_argument('--shared',action='store_true');parser.add_argument('--output',required=True,type=pathlib.Path)
+ parser.add_argument('--slot-power',action='store_true',help='Experiment with isolated guest slot power; no NVIDIA recovery claim')
  args=parser.parse_args()
+ if args.slot_power and args.shared:parser.error('Slot-power experiment requires separate bridges')
  if args.arch=='aarch64' and not args.userspace:parser.error('ARM64 requires matching guest userspace')
  if not args.userspace and os.uname().machine!='x86_64':parser.error('Automatic userspace construction currently supports x86_64 hosts')
  with tempfile.TemporaryDirectory(prefix='gpu-qemu-') as directory:
-  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace)
+  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power)
   names=[str(path.relative_to(root)) for path in sorted(root.rglob('*'))]
   packed=subprocess.run(['cpio','--null','-o','--format=newc','--owner=0:0'],cwd=root,
                         input=('\0'.join(names)+'\0').encode(),capture_output=True,check=True)

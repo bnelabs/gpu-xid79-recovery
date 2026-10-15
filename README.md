@@ -167,6 +167,8 @@ Tests cover device discovery, reset scope, timeouts, driver rebinds, profile sel
 
 Hardware testing so far covers an RTX 3090 on an MS-7D25 board using its platform adapter. It recovered from unreachable PCI configuration space and passed NVML and CUDA transfer checks without rebooting. Other boards, enterprise fabrics, MIG, and virtualized deployments still need hardware testing.
 
+An [experimental driver teardown candidate](patches/README.md) is available separately. It has compiled-source tests and a module build, but has not been loaded or hardware-validated.
+
 For hardware-free investigation of NVIDIA’s reset methods, see the [source replay experiment](docs/reset-source-replay.md). It exercises vendor methods with modeled transports; it does not establish hardware recovery.
 
 ## References

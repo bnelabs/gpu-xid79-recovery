@@ -1,0 +1,644 @@
+diff --git a/kernel-open/nvidia-drm/nvidia-drm-drv.c b/kernel-open/nvidia-drm/nvidia-drm-drv.c
+index 64df8c0..a3067e8 100644
+--- a/kernel-open/nvidia-drm/nvidia-drm-drv.c
++++ b/kernel-open/nvidia-drm/nvidia-drm-drv.c
+@@ -935,11 +935,21 @@ static void nv_drm_dev_unload(struct drm_device *dev)
+         return;
+     }
+ 
++    /*
++     * Disable all outputs before tearing down the mode configuration, so that
++     * the framebuffer/plane/connector references held by committed atomic state
++     * are dropped and drm_mode_config_cleanup() below does not WARN about leaked
++     * objects. On surprise-removal the dying clients may not have released those
++     * references yet. This previously ran only when an fbdev console was
++     * present, leaving the refs leaked (and WARNing) for fbdev-less sessions
++     * (e.g. Wayland) on eGPU unplug.
++     */
++    drm_atomic_helper_shutdown(dev);
++
+     /* Release modeset ownership if fbdev is enabled */
+ 
+ #if defined(NV_DRM_FBDEV_AVAILABLE)
+     if (nv_dev->hasFramebufferConsole) {
+-        drm_atomic_helper_shutdown(dev);
+         nvKms->releaseOwnership(nv_dev->pDevice);
+     }
+ #endif
+diff --git a/kernel-open/nvidia-drm/nvidia-drm-gem-nvkms-memory.c b/kernel-open/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+index 0785ddd..349eef5 100644
+--- a/kernel-open/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
++++ b/kernel-open/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+@@ -63,8 +63,14 @@ static void __nv_drm_gem_nvkms_memory_free(struct nv_drm_gem_object *nv_gem)
+         nvKms->freeMemoryPages((NvU64 *)nv_nvkms_memory->pages);
+     }
+ 
+-    /* Decrement GC6 blocker if it's still held */
+-    if (nv_nvkms_memory->was_mmapped) {
++    /*
++     * Decrement GC6 blocker if it's still held.  On surprise-removal (e.g. a
++     * Thunderbolt eGPU unplug) the device may already be torn down, leaving
++     * nv_dev->pDevice == NULL; skip the decrement in that case -- the RM-side
++     * blocker context died with the device, so there is nothing to release and
++     * dereferencing the NULL device would oops in RmGc6BlockerRefCntDec().
++     */
++    if (nv_nvkms_memory->was_mmapped && nv_dev->pDevice != NULL) {
+         nvKms->gc6BlockerRefCntDec(nv_dev->pDevice);
+     }
+ 
+@@ -351,10 +357,12 @@ static void __nv_drm_gem_nvkms_prime_vunmap(
+     }
+ 
+     if (nv_nvkms_memory->physically_mapped &&
++        nv_gem->nv_dev->pDevice != NULL &&
+         nvKms->isVidmem(nv_gem->pMemory)) {
+         /*
+          * Decrement the GC6 blocker refcount now that the mapping is no longer
+-         * needed.
++         * needed.  Skip it when the device is already gone (surprise-removal):
++         * the blocker context died with the device.
+          */
+         nvKms->gc6BlockerRefCntDec(nv_gem->nv_dev->pDevice);
+     }
+diff --git a/kernel-open/nvidia-drm/nvidia-drm-modeset.c b/kernel-open/nvidia-drm/nvidia-drm-modeset.c
+index 82325f4..f41baff 100644
+--- a/kernel-open/nvidia-drm/nvidia-drm-modeset.c
++++ b/kernel-open/nvidia-drm/nvidia-drm-modeset.c
+@@ -545,6 +545,7 @@ int nv_drm_atomic_check(struct drm_device *dev,
+                         nv_drm_atomic_state_base_t *state)
+ {
+     int ret = 0;
++    int idx;
+ 
+     struct drm_crtc *crtc;
+     struct drm_crtc_state *crtc_state;
+@@ -557,6 +558,16 @@ int nv_drm_atomic_check(struct drm_device *dev,
+     bool cursor_only_commit;
+ 
+     bool infoframe_changed;
++    /*
++     * If the device has been unplugged (e.g. eGPU Thunderbolt surprise-removal,
++     * drm_dev_unplug() in nv_drm_remove()), fail this client commit-check fast
++     * with -ENODEV instead of descending into NVKMS on dead hardware. The
++     * drm_dev_enter/exit critical section also lets the unplug path drain.
++     */
++    if (!drm_dev_enter(dev, &idx)) {
++        return -ENODEV;
++    }
++
+     for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
+ 
+         /*
+@@ -646,6 +657,7 @@ int nv_drm_atomic_check(struct drm_device *dev,
+                                              state, false /* commit */);
+ 
+ done:
++    drm_dev_exit(idx);
+     return ret;
+ }
+ 
+diff --git a/src/nvidia-modeset/include/nvkms-dma.h b/src/nvidia-modeset/include/nvkms-dma.h
+index 2e92b6b..63b59ed 100644
+--- a/src/nvidia-modeset/include/nvkms-dma.h
++++ b/src/nvidia-modeset/include/nvkms-dma.h
+@@ -37,6 +37,14 @@ void nvDmaKickoffEvo(NVEvoChannelPtr);
+ void nvEvoMakeRoom(NVEvoChannelPtr pChannel, NvU32 count);
+ void nvWriteEvoCoreNotifier(const NVDispEvoRec *, NvU32 offset, NvU32 value);
+ 
++/*
++ * Set/test the lock-free "GPU is lost" flag on NVDevEvoRec. Set from resman
++ * context (the GPU-unavailable event callback) and from the push-buffer
++ * no-progress backstop; tested by the push-buffer waiters and nvSetDispModeEvo.
++ */
++void nvEvoSetDeviceLost(NVDevEvoPtr pDevEvo);
++NvBool nvEvoDeviceIsLost(const NVDevEvoRec *pDevEvo);
++
+ NvBool nvEvoIsCoreNotifierComplete(NVDispEvoPtr pDispEvo,
+                                    NvU32 offset, NvU32 done_base_bit,
+                                    NvU32 done_extent_bit,
+diff --git a/src/nvidia-modeset/include/nvkms-rm.h b/src/nvidia-modeset/include/nvkms-rm.h
+index 0385bf3..2cc3212 100644
+--- a/src/nvidia-modeset/include/nvkms-rm.h
++++ b/src/nvidia-modeset/include/nvkms-rm.h
+@@ -45,9 +45,16 @@ enum NvKmsContentProtection nvGetContentProtectionState(const NVDpyEvoRec *pDpyE
+ void nvGetContentProtectionTopology(NVConnectorEvoPtr pConnectorEvo,
+                                     void *pTopology);
+ 
++/*
++ * 'arg' is the opaque value delivered to 'func' when the event fires. Most
++ * callers pass a struct nvkms_ref_ptr * (dereferenced safely under nvkms_lock
++ * from deferred work). Callers whose callback must run lock-free in resman
++ * context (e.g. the GPU-unavailable handler) instead pass a pointer that is
++ * stable for the lifetime of the event subscription.
++ */
+ NvBool nvRmRegisterCallback(const NVDevEvoRec *pDevEvo,
+                             NVOS10_EVENT_KERNEL_CALLBACK_EX *cb,
+-                            struct nvkms_ref_ptr *ref_ptr,
++                            void *arg,
+                             NvU32 parentHandle,
+                             NvU32 eventHandle,
+                             Callback5ArgVoidReturn func,
+diff --git a/src/nvidia-modeset/include/nvkms-types.h b/src/nvidia-modeset/include/nvkms-types.h
+index f0e917d..b691325 100644
+--- a/src/nvidia-modeset/include/nvkms-types.h
++++ b/src/nvidia-modeset/include/nvkms-types.h
+@@ -1330,6 +1330,17 @@ typedef struct _NVEvoDevRec {
+     struct {
+         NVEvoDma dma;
+     } rgSemaDma[NV_MAX_HEADS];
++
++    /*
++     * Lock-free "GPU is lost" flag. Set (via __atomic, RELEASE) either by the
++     * RM NV2080_NOTIFIERS_GPU_UNAVAILABLE event callback (PCI surprise-removal)
++     * or by the no-progress backstop in nvkms-dma.c (engine-dead-in-place, where
++     * RM never detects the loss). Polled (ACQUIRE) by the EVO push-buffer waiters
++     * and nvSetDispModeEvo, so they abandon waits on a dead GPU instead of
++     * spinning forever while holding nvkms_lock. Access only via
++     * nvEvoSetDeviceLost() / nvEvoDeviceIsLost().
++     */
++    NvU32 gpuLost;
+ } NVDevEvoRec;
+ 
+ /*
+@@ -2068,10 +2079,12 @@ typedef struct _NVDispEvoRec {
+     NvU32      DPIRQEventHandle;
+     NvU32      HDMIFRLRetrainEventHandle;
+     NvU32      cpEventHandle;
++    NvU32      gpuUnavailableEventHandle;
+     NVOS10_EVENT_KERNEL_CALLBACK_EX rmHotplugCallback;
+     NVOS10_EVENT_KERNEL_CALLBACK_EX rmDPIRQCallback;
+     NVOS10_EVENT_KERNEL_CALLBACK_EX rmHDMIFRLRetrainCallback;
+     NVOS10_EVENT_KERNEL_CALLBACK_EX rmCpCallback;
++    NVOS10_EVENT_KERNEL_CALLBACK_EX rmGpuUnavailableCallback;
+ 
+     NVDispHeadStateEvoRec headState[NVKMS_MAX_HEADS_PER_DISP];
+     NVDispApiHeadStateEvoRec apiHeadState[NVKMS_MAX_HEADS_PER_DISP];
+diff --git a/src/nvidia-modeset/kapi/src/nvkms-kapi.c b/src/nvidia-modeset/kapi/src/nvkms-kapi.c
+index 91b619e..8a84ef6 100644
+--- a/src/nvidia-modeset/kapi/src/nvkms-kapi.c
++++ b/src/nvidia-modeset/kapi/src/nvkms-kapi.c
+@@ -2028,6 +2028,16 @@ static NvBool RmGc6BlockerRefCntAction(const struct NvKmsKapiDevice *device,
+     NV_STATUS status;
+     NV2080_CTRL_OS_UNIX_GC6_BLOCKER_REFCNT_PARAMS params = { 0 };
+ 
++    /*
++     * Be uniformly NULL-safe at the kapi boundary, matching FreeMemory(),
++     * GetMemoryPages() and MapMemory().  On surprise-removal the GEM-free path
++     * can reach here with a torn-down device; dereferencing device->hRmClient
++     * then oopses.
++     */
++    if (device == NULL) {
++        return NV_FALSE;
++    }
++
+     nvAssert((action == NV2080_CTRL_OS_UNIX_GC6_BLOCKER_REFCNT_INC) ||
+              (action == NV2080_CTRL_OS_UNIX_GC6_BLOCKER_REFCNT_DEC));
+ 
+diff --git a/src/nvidia-modeset/src/nvkms-dma.c b/src/nvidia-modeset/src/nvkms-dma.c
+index 75e2046..151b70e 100644
+--- a/src/nvidia-modeset/src/nvkms-dma.c
++++ b/src/nvidia-modeset/src/nvkms-dma.c
+@@ -32,8 +32,56 @@
+ #define NV_DMA_PUSHER_CHASE_PAD 5
+ #define NV_EVO_NOTIFIER_SHORT_TIMEOUT_USEC 3000000 // 3 seconds
+ 
++/*
++ * Backstop for the "engine dead in place" failure mode: the eGPU's power browned
++ * out but its Thunderbolt link stayed up, so there is no PCI surprise-removal and
++ * RM never detects the loss (NV_PMC_BOOT_0 still reads valid) -- the GPU-lost
++ * event never fires. In that case the only evidence is that the channel's GET
++ * pointer stops advancing. If GET makes no progress at all for this long, treat
++ * the GPU as lost. This is deliberately far above the longest legitimate single
++ * display wait (5 s) and the kicked-off-then-slow case, but well under the kernel
++ * hung-task watchdog (120 s), and it only fires when GET does not advance -- a
++ * slow-but-alive GPU keeps advancing GET and never trips it.
++ */
++#define NV_EVO_GPU_LOST_BACKSTOP_USEC 30000000 // 30 seconds
++
+ static void EvoCoreKickoff(NVDmaBufferEvoPtr push_buffer, NvU32 putOffset);
+ 
++/*
++ * The "GPU is lost" flag on NVDevEvoRec is written lock-free from resman context
++ * (the NV2080_NOTIFIERS_GPU_UNAVAILABLE callback) and from the no-progress
++ * backstop below, and read by the push-buffer waiters and nvSetDispModeEvo. Use
++ * C11 atomics with release/acquire ordering -- nvidia-modeset has no portAtomic
++ * or kernel atomic_t, and a plain volatile would give no inter-CPU ordering.
++ */
++void nvEvoSetDeviceLost(NVDevEvoPtr pDevEvo)
++{
++    __atomic_store_n(&pDevEvo->gpuLost, 1, __ATOMIC_RELEASE);
++}
++
++NvBool nvEvoDeviceIsLost(const NVDevEvoRec *pDevEvo)
++{
++    return __atomic_load_n(&pDevEvo->gpuLost, __ATOMIC_ACQUIRE) != 0;
++}
++
++/*
++ * When nvEvoMakeRoom() abandons a wait because the GPU is lost, it must NOT
++ * leave the pushbuffer with fifo_free_count <= count: its caller
++ * (nvDmaSetStartEvoMethod) would then write the method and do
++ * "fifo_free_count -= countPlusHeader", underflowing the NvU32, after which it
++ * never calls nvEvoMakeRoom() again and keeps advancing pb.buffer past the end
++ * of the ring -- a CPU buffer overrun. Instead, reset the ring to a fresh-empty
++ * state (buffer at base, a full free count), exactly as a normal wrap-to-base
++ * would. Subsequent methods go nowhere (the GPU is gone) but stay in-bounds:
++ * the next time the free count is exhausted, nvEvoMakeRoom() is re-entered and
++ * resets again, so pb.buffer oscillates within [base, base + offset_max].
++ */
++static void EvoResetPushBufferForLostGpu(NVDmaBufferEvoPtr push_buffer)
++{
++    push_buffer->buffer = push_buffer->base;
++    push_buffer->fifo_free_count = push_buffer->offset_max >> 2;
++}
++
+ void nvDmaKickoffEvo(NVEvoChannelPtr pChannel)
+ {
+     NVDmaBufferEvoPtr p = &pChannel->pb;
+@@ -95,9 +143,12 @@ NvBool nvEvoPollForEmptyChannel(NVEvoChannelPtr pChannel, NvU32 sd,
+ void nvEvoMakeRoom(NVEvoChannelPtr pChannel, NvU32 count)
+ {
+     NVDmaBufferEvoPtr push_buffer = &pChannel->pb;
++    NVDevEvoPtr pDevEvo = push_buffer->pDevEvo;
+     NvU32 getOffset;
+     NvU32 putOffset;
+     NvU64 startTime = 0;
++    NvU64 noProgressStartTime = 0;
++    NvU32 lastGetOffset = ~0;
+     const NvU64 timeout = 5000000; /* 5 seconds */
+ 
+     putOffset = (NvU32) ((char *)push_buffer->buffer -
+@@ -111,8 +162,28 @@ void nvEvoMakeRoom(NVEvoChannelPtr pChannel, NvU32 count)
+     }
+ 
+     while (1) {
++        /*
++         * If the GPU has been flagged lost (by the GPU-unavailable event for a
++         * surprise-removal, or by the no-progress backstop below / another
++         * waiter), stop spinning. Methods already written to the dead channel
++         * are harmless; the modeset/flip will fail cleanly via the gpuLost
++         * check in nvSetDispModeEvo and the bounded RM-backed idle waits.
++         */
++        if (nvEvoDeviceIsLost(pDevEvo)) {
++            EvoResetPushBufferForLostGpu(push_buffer);
++            return;
++        }
++
+         getOffset = EvoCoreReadGet(push_buffer);
+ 
++        /* An all-ones MMIO read is not an aligned GET offset. Do not
++         * interpret it as free queue space while the loss event is pending. */
++        if (getOffset == 0xffffffffU) {
++            nvEvoSetDeviceLost(pDevEvo);
++            EvoResetPushBufferForLostGpu(push_buffer);
++            return;
++        }
++
+         if (putOffset >= getOffset) {
+             push_buffer->fifo_free_count =
+                 (push_buffer->offset_max - putOffset) >> 2;
+@@ -159,6 +230,28 @@ void nvEvoMakeRoom(NVEvoChannelPtr pChannel, NvU32 count)
+             startTime = 0;
+         }
+ 
++        /*
++         * No-progress backstop for the engine-dead-in-place case (link up, no
++         * removal event). Reset the timer whenever GET advances; if GET has not
++         * advanced at all for NV_EVO_GPU_LOST_BACKSTOP_USEC, declare the GPU
++         * lost (so all waiters and the modeset path observe the same flag) and
++         * stop spinning.
++         */
++        if (getOffset != lastGetOffset) {
++            lastGetOffset = getOffset;
++            noProgressStartTime = 0;
++        } else if (nvExceedsTimeoutUSec(pDevEvo, &noProgressStartTime,
++                                        NV_EVO_GPU_LOST_BACKSTOP_USEC)) {
++            nvEvoLogDev(pDevEvo, EVO_LOG_ERROR,
++                "GPU made no progress for %u seconds; assuming the GPU is lost "
++                "and abandoning the wait (0x%08x:%d).",
++                (NvU32)(NV_EVO_GPU_LOST_BACKSTOP_USEC / 1000000),
++                pChannel->hwclass, pChannel->instance);
++            nvEvoSetDeviceLost(pDevEvo);
++            EvoResetPushBufferForLostGpu(push_buffer);
++            return;
++        }
++
+         nvkms_yield();
+    }
+ }
+@@ -198,6 +291,8 @@ static NvBool EvoCheckNotifier(const NVDispEvoRec *pDispEvo,
+     NVDmaBufferEvoPtr p = &pDevEvo->core->pb;
+     volatile NvU32 *pNotifier = pDevEvo->core->notifierDma.cpuAddress;
+     NvU64 startTime = 0;
++    NvU64 noProgressStartTime = 0;
++    NvU32 lastGetOffset = ~0;
+ 
+     nvAssert(pNotifier != NULL);
+     pNotifier += offset;
+@@ -216,12 +311,31 @@ static NvBool EvoCheckNotifier(const NVDispEvoRec *pDispEvo,
+             return FALSE;
+         }
+ 
++        /*
++         * If the GPU has been flagged lost (GPU-unavailable event for a
++         * surprise-removal, or the no-progress backstop below / nvEvoMakeRoom),
++         * abandon the wait. Return FALSE -- do NOT fake completion by writing
++         * the notifier -- so the caller and the teardown path see that the
++         * notifier did not complete and unwind correctly.
++         */
++        if (nvEvoDeviceIsLost(pDevEvo)) {
++            nvEvoLogDisp(pDispEvo, EVO_LOG_WARN,
++                         "GPU is lost; abandoning display notifier wait "
++                         "(%d:0x%08x).", sd, val);
++            return FALSE;
++        }
++
+         if (nvExceedsTimeoutUSec(
+                 pDevEvo,
+                 &startTime,
+                 NV_EVO_NOTIFIER_SHORT_TIMEOUT_USEC) &&
+             (p->put_offset == EvoCoreReadGet(p)))
+         {
++            /*
++             * The channel has drained (put == GET) but the notifier was never
++             * written: a genuinely-alive GPU that dropped a notifier write.
++             * This is a legitimate recovery -- fake completion and continue.
++             */
+             nvEvoLogDisp(pDispEvo, EVO_LOG_WARN,
+                          "Lost display notification (%d:0x%08x); "
+                          "continuing.", sd, val);
+@@ -229,6 +343,35 @@ static NvBool EvoCheckNotifier(const NVDispEvoRec *pDispEvo,
+             return TRUE;
+         }
+ 
++        /*
++         * No-progress backstop for the engine-dead-in-place case (link up, no
++         * removal event, so gpuLost is never set by the event path). If GET has
++         * not advanced at all for NV_EVO_GPU_LOST_BACKSTOP_USEC, declare the GPU
++         * lost and abandon the wait. GET advancing resets the timer, so a
++         * slow-but-alive GPU never trips this.
++         */
++        {
++            const NvU32 getOffset = EvoCoreReadGet(p);
++            if (getOffset == 0xffffffffU) {
++                nvEvoSetDeviceLost(pDevEvo);
++                return FALSE;
++            }
++            if (getOffset != lastGetOffset) {
++                lastGetOffset = getOffset;
++                noProgressStartTime = 0;
++            } else if (nvExceedsTimeoutUSec(pDevEvo, &noProgressStartTime,
++                                            NV_EVO_GPU_LOST_BACKSTOP_USEC)) {
++                nvEvoLogDisp(pDispEvo, EVO_LOG_ERROR,
++                             "GPU made no progress for %u seconds; assuming the "
++                             "GPU is lost and abandoning the display notifier "
++                             "wait (%d:0x%08x).",
++                             (NvU32)(NV_EVO_GPU_LOST_BACKSTOP_USEC / 1000000),
++                             sd, val);
++                nvEvoSetDeviceLost(pDevEvo);
++                return FALSE;
++            }
++        }
++
+         nvkms_yield();
+     } while (TRUE);
+ }
+diff --git a/src/nvidia-modeset/src/nvkms-modeset.c b/src/nvidia-modeset/src/nvkms-modeset.c
+index f51f97b..cbb750b 100644
+--- a/src/nvidia-modeset/src/nvkms-modeset.c
++++ b/src/nvidia-modeset/src/nvkms-modeset.c
+@@ -4232,6 +4232,16 @@ NvBool nvSetDispModeEvo(NVDevEvoPtr pDevEvo,
+ 
+     InitializeReply(pDevEvo, pRequest, pReply);
+ 
++    /*
++     * If the GPU has already been flagged lost, fail the modeset up front
++     * rather than issuing methods and notifier waits that would spin on dead
++     * hardware. ret stays FALSE so this propagates as -EINVAL out to
++     * nv_drm_atomic_check / the SET_MODE ioctl.
++     */
++    if (nvEvoDeviceIsLost(pDevEvo)) {
++        goto done;
++    }
++
+     if (!ValidateRequest(pDevEvo, pOpenDev, pRequest, pReply)) {
+         goto done;
+     }
+diff --git a/src/nvidia-modeset/src/nvkms-rm.c b/src/nvidia-modeset/src/nvkms-rm.c
+index 7ad713b..4dab42c 100644
+--- a/src/nvidia-modeset/src/nvkms-rm.c
++++ b/src/nvidia-modeset/src/nvkms-rm.c
+@@ -1813,6 +1813,30 @@ static void ReceiveHotplugEvent(void *arg, void *pEventDataVoid, NvU32 hEvent,
+         0);
+ }
+ 
++/*
++ * Receive an NV2080_NOTIFIERS_GPU_UNAVAILABLE event from resman, fired when the
++ * GPU falls off the bus (PCI surprise-removal / Xid 79).
++ *
++ * Unlike the other event handlers, this must NOT schedule deferred work: the
++ * deferred-work path runs under nvkms_lock, and the whole point of this event is
++ * to break a display waiter that is spinning *while holding* nvkms_lock (the
++ * removal deadlock). So this runs entirely in resman's lock-free context and
++ * only sets the lock-free gpuLost flag, which the waiters poll.
++ *
++ * 'arg' is the NVDevEvoPtr itself (not a ref_ptr): a ref_ptr's pointee is
++ * guarded by nvkms_lock, which we cannot take here. The pDevEvo is stable for
++ * the lifetime of this subscription -- the event object is freed in
++ * nvRmDestroyDisplays() before the device is torn down.
++ */
++static void ReceiveGpuUnavailableEvent(void *arg, void *pEventDataVoid,
++                                       NvU32 hEvent, NvU32 Data,
++                                       NV_STATUS Status)
++{
++    NVDevEvoPtr pDevEvo = arg;
++
++    nvEvoSetDeviceLost(pDevEvo);
++}
++
+ static void ReceiveDPIRQEvent(void *arg, void *pEventDataVoid, NvU32 hEvent,
+                               NvU32 Data, NV_STATUS Status)
+ {
+@@ -1858,7 +1882,7 @@ static void ReceiveCpEvent(void *arg, void *pEventDataVoid, NvU32 hEvent,
+ 
+ NvBool nvRmRegisterCallback(const NVDevEvoRec *pDevEvo,
+                             NVOS10_EVENT_KERNEL_CALLBACK_EX *cb,
+-                            struct nvkms_ref_ptr *ref_ptr,
++                            void *arg,
+                             NvU32 parentHandle,
+                             NvU32 eventHandle,
+                             Callback5ArgVoidReturn func,
+@@ -1867,7 +1891,7 @@ NvBool nvRmRegisterCallback(const NVDevEvoRec *pDevEvo,
+     NV0005_ALLOC_PARAMETERS allocEventParams = { 0 };
+ 
+     cb->func = func;
+-    cb->arg = ref_ptr;
++    cb->arg = arg;
+ 
+     allocEventParams.hParentClient = nvEvoGlobal.clientHandle;
+     allocEventParams.hClass        = NV01_EVENT_KERNEL_CALLBACK_EX;
+@@ -2081,6 +2105,46 @@ enum NvKmsAllocDeviceStatus nvRmAllocDisplays(NVDevEvoPtr pDevEvo)
+         }
+     }
+ 
++    /*
++     * Subscribe to GPU-unavailable ("fell off the bus") notifications, so that
++     * display waiters can abandon a dead GPU instead of deadlocking. The
++     * callback runs lock-free in resman context and only sets pDevEvo->gpuLost,
++     * so its 'arg' is the stable pDevEvo pointer rather than a ref_ptr.
++     */
++    FOR_ALL_EVO_DISPLAYS(pDispEvo, sd, pDevEvo) {
++        NV2080_CTRL_EVENT_SET_NOTIFICATION_PARAMS setEventParams = { };
++        NvU32 subDevice, ret;
++
++        subDevice = pDevEvo->pSubDevices[pDispEvo->displayOwner]->handle;
++
++        pDispEvo->gpuUnavailableEventHandle =
++            nvGenerateUnixRmHandle(&pDevEvo->handleAllocator);
++
++        if (!nvRmRegisterCallback(pDevEvo, &pDispEvo->rmGpuUnavailableCallback,
++                                  pDevEvo,
++                                  subDevice,
++                                  pDispEvo->gpuUnavailableEventHandle,
++                                  ReceiveGpuUnavailableEvent,
++                                  NV2080_NOTIFIERS_GPU_UNAVAILABLE)) {
++            nvEvoLogDev(pDevEvo, EVO_LOG_WARN,
++                        "Failed to register GPU-unavailable event");
++        }
++
++        // Enable GPU-unavailable notifications from this subdevice.
++        setEventParams.event = NV2080_NOTIFIERS_GPU_UNAVAILABLE;
++        setEventParams.action = NV2080_CTRL_EVENT_SET_NOTIFICATION_ACTION_REPEAT;
++        if ((ret = nvRmApiControl(nvEvoGlobal.clientHandle,
++                                  subDevice,
++                                  NV2080_CTRL_CMD_EVENT_SET_NOTIFICATION,
++                                  &setEventParams,
++                                  sizeof(setEventParams)))
++                != NVOS_STATUS_SUCCESS) {
++            nvEvoLogDev(pDevEvo, EVO_LOG_WARN,
++                        "Failed to enable GPU-unavailable "
++                        "notifications: 0x%x\n", ret);
++        }
++    }
++
+     // Allocate a handler for the DisplayPort "IRQ" event, which is signaled
+     // when there's a short interruption in the hotplug detect line.
+     FOR_ALL_EVO_DISPLAYS(pDispEvo, sd, pDevEvo) {
+@@ -2258,6 +2322,31 @@ void nvRmDestroyDisplays(NVDevEvoPtr pDevEvo)
+             pDispEvo->hotplugEventHandle = 0;
+         }
+ 
++        // Free the GPU-unavailable event.
++        if (pDispEvo->gpuUnavailableEventHandle != 0) {
++            NV2080_CTRL_EVENT_SET_NOTIFICATION_PARAMS setEventParams = { };
++
++            // Disable GPU-unavailable notifications for this subdevice
++            setEventParams.event = NV2080_NOTIFIERS_GPU_UNAVAILABLE;
++            setEventParams.action = NV2080_CTRL_EVENT_SET_NOTIFICATION_ACTION_DISABLE;
++            if ((ret = nvRmApiControl(nvEvoGlobal.clientHandle,
++                                      subDevice,
++                                      NV2080_CTRL_CMD_EVENT_SET_NOTIFICATION,
++                                      &setEventParams,
++                                      sizeof(setEventParams)))
++                    != NVOS_STATUS_SUCCESS) {
++                nvEvoLogDev(pDevEvo, EVO_LOG_WARN,
++                                "Failed to disable GPU-unavailable notifications (subdevice: %d) (error: 0x%x)", dispIndex, ret);
++            }
++
++            nvRmApiFree(nvEvoGlobal.clientHandle,
++                        nvEvoGlobal.clientHandle,
++                        pDispEvo->gpuUnavailableEventHandle);
++            nvFreeUnixRmHandle(&pDevEvo->handleAllocator,
++                               pDispEvo->gpuUnavailableEventHandle);
++            pDispEvo->gpuUnavailableEventHandle = 0;
++        }
++
+         // Free the HDMI FRL retrain event
+         if (pDispEvo->HDMIFRLRetrainEventHandle != 0) {
+             NV2080_CTRL_EVENT_SET_NOTIFICATION_PARAMS setEventParams = { };
+diff --git a/src/nvidia/src/kernel/gpu/gpu_rmapi.c b/src/nvidia/src/kernel/gpu/gpu_rmapi.c
+index 1491d5c..622fdb8 100644
+--- a/src/nvidia/src/kernel/gpu/gpu_rmapi.c
++++ b/src/nvidia/src/kernel/gpu/gpu_rmapi.c
+@@ -49,6 +49,21 @@ gpuSetExternalKernelClientCount_IMPL(OBJGPU *pGpu, NvBool bIncr)
+     }
+     else
+     {
++        /*
++         * On a GPU that has fallen off the bus, surprise-removal teardown and
++         * the dying clients' fd-close paths both drain this count, so it can be
++         * decremented more times than it was incremented and underflow past 0.
++         * Treat a zero count on a lost GPU as already-torn-down: skip the
++         * decrement (and its underflow assert/WARN) rather than failing. The
++         * assert stays active for a healthy GPU, where it is a real balance
++         * check.
++         */
++        if (pGpu->getProperty(pGpu, PDB_PROP_GPU_IS_LOST) &&
++            (pGpu->externalKernelClientCount == 0))
++        {
++            return NV_OK;
++        }
++
+         NV_ASSERT_OR_RETURN(pGpu->externalKernelClientCount > 0, NV_ERR_INVALID_OPERATION);
+         pGpu->externalKernelClientCount--;
+     }
+diff --git a/src/nvidia/src/kernel/gpu/gsp/arch/ampere/kernel_gsp_falcon_ga102.c b/src/nvidia/src/kernel/gpu/gsp/arch/ampere/kernel_gsp_falcon_ga102.c
+index 1de6c21..5ca3738 100644
+--- a/src/nvidia/src/kernel/gpu/gsp/arch/ampere/kernel_gsp_falcon_ga102.c
++++ b/src/nvidia/src/kernel/gpu/gsp/arch/ampere/kernel_gsp_falcon_ga102.c
+@@ -89,6 +89,15 @@ s_dmaPoll_GA102
+         data.pollValue = DRF_DEF(_PFALCON, _FALCON_DMATRFCMD, _IDLE, _TRUE);
+     }
+ 
++    //
++    // If the GPU has fallen off the bus (e.g. Thunderbolt eGPU hot-unplug), this
++    // poll can only ever time out.  Bail immediately instead of spinning to the
++    // timeout, as kflcnSwitchToFalcon_GA102() does for its core-switch wait.
++    //
++    if (!API_GPU_ATTACHED_SANITY_CHECK(pGpu) ||
++        pGpu->getProperty(pGpu, PDB_PROP_GPU_IS_LOST))
++        return NV_ERR_GPU_IS_LOST;
++
+     status = gpuTimeoutCondWait(pGpu, s_dmaPollCondFunc, &data, NULL);
+     if (status != NV_OK)
+     {
+diff --git a/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_booter_tu102.c b/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_booter_tu102.c
+index 208d551..fdc0e2a 100644
+--- a/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_booter_tu102.c
++++ b/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_booter_tu102.c
+@@ -141,6 +141,10 @@ kgspExecuteBooterUnloadIfNeeded_TU102
+     if (API_GPU_IN_RESET_SANITY_CHECK(pGpu))
+         return NV_ERR_GPU_IN_FULLCHIP_RESET;
+ 
++    if (!API_GPU_ATTACHED_SANITY_CHECK(pGpu) ||
++        pGpu->getProperty(pGpu, PDB_PROP_GPU_IS_LOST))
++        return NV_ERR_GPU_IS_LOST;
++
+     // skip actually executing Booter Unload if WPR2 is not up
+     if (!kgspIsWpr2Up_HAL(pGpu, pKernelGsp))
+     {
+diff --git a/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_tu102.c b/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_tu102.c
+index ec75de1..a5320cd 100644
+--- a/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_tu102.c
++++ b/src/nvidia/src/kernel/gpu/gsp/arch/turing/kernel_gsp_tu102.c
+@@ -536,6 +536,20 @@ kgspTeardown_TU102
+     //
+     threadStateResetTimeout(pGpu);
+ 
++    //
++    // On surprise removal (e.g. Thunderbolt eGPU hot-unplug) the GPU is off the
++    // bus.  The FWSEC-SB and Booter Unload sequences below drive Falcon DMA that
++    // can only ever time out (several seconds each, stacked), holding the RM API
++    // and GPU locks for minutes and wedging the rest of the system.  Skip them,
++    // mirroring the gpu-lost shortcut in kgspRpcSanityCheck() (kernel_gsp.c).
++    //
++    if (!API_GPU_ATTACHED_SANITY_CHECK(pGpu) ||
++        pGpu->getProperty(pGpu, PDB_PROP_GPU_IS_LOST))
++    {
++        NV_PRINTF(LEVEL_INFO, "GPU lost, skipping FWSEC-SB and Booter Unload teardown\n");
++        return NV_ERR_GPU_IS_LOST;
++    }
++
+     if (unloadMode != KGSP_UNLOAD_MODE_GC6_ENTER)
+     {
+         KernelGspPreparedFwsecCmd preparedCmd;

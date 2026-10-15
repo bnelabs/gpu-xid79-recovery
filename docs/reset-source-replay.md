@@ -48,3 +48,14 @@ This requires a C compiler and the reviewed NVIDIA kernel-module source at commi
 Twelve cases compare completed/nonblocking notifications, a drained queue with a lost notification, a slow reachable queue, all-ones GET, and a reachable stalled GET. The original exhausts the modeled step budget for all-ones GET. The candidate returns failure after the existing short timeout without changing the notifier. Both retain the same modeled normal behavior; both still stall for the modeled reachable-but-nonprogressing GET.
 
 This candidate is not deployed. The outer `nvEvoWaitForCoreNotifier` API returns void and ignores the internal result. Other waits, including `nvEvoMakeRoom`, also need review. Returning from one wait does not establish a complete driver teardown or GPU recovery path. The test does not establish which MMIO values occurred in a real failure.
+
+
+## Rebased FIFO and notifier paths
+
+The separate [driver candidate](../patches/README.md) has a broader compiled harness:
+
+```bash
+python3 experiments/replay_pushbuffer.py /path/to/patched-615.71.09-source
+```
+
+It exercises actual FIFO allocation, method writer, loss-flag, and notifier functions from that patch. Fifteen modeled scenarios include a 100,000-method ring-bounds stress case and a 61-second slow-progress case. Method hashes bind the replay to the reviewed candidate. This does not test physical GPU reset, concurrency, or the full driver teardown.

@@ -366,6 +366,9 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'd3cold_allowed_policy':text(device/'d3cold_allowed'),
             'profiles':[],'selected_backend':backend_for(target,cfg),
             'unverified_candidates_policy':'Inventory only; GPIO wiring and firmware reset scope require a verified adapter'}
+    report['kernel_reset']['mode']=cfg.get('kernel_reset_mode','auto')
+    try:report['kernel_reset']['candidate_paths']=[str(path) for path in kernel_reset_paths(target,cfg,root)]
+    except RecoveryError as error:report['kernel_reset']['selection_error']=str(error)
     for entry in sorted(root.iterdir()):
         klass=text(entry/'class')
         if klass.startswith(('0x06','0x0c05')):
@@ -491,11 +494,31 @@ def verify(target,cfg):
         log(result)
     log('GPU responded to NVML'+(' and workload validation passed' if validation else '; CUDA execution has not been verified'))
 
+def kernel_reset_paths(target,cfg,root=SYSFS):
+    mode=cfg.get('kernel_reset_mode','auto')
+    if mode not in ('auto','device','bus'):
+        raise RecoveryError('kernel_reset_mode must be auto, device or bus')
+    device=root/target.bdf/'reset'
+    subordinate=root/target.bridge/'reset_subordinate' if target.bridge else None
+    bus_available=subordinate is not None and subordinate.exists()
+    if mode=='bus':
+        if not bus_available:raise RecoveryError('Kernel subordinate bus reset is not exposed')
+        return [subordinate]
+    if mode=='device':
+        if not target.reset_methods:raise RecoveryError('No device reset method exposed')
+        return [device]
+    # An all-ones/zero vendor response cannot carry a targeted PCI FLR.
+    raw=config_bytes(root/target.bdf/'config')
+    if bus_available and raw[:2] in (b'\xff\xff',b'\x00\x00'):
+        return [subordinate]
+    return ([device] if target.reset_methods else [])+([subordinate] if bus_available else [])
+
 def detached_reset(target,cfg,root=SYSFS):
     if not target.isolated: raise RecoveryError('PCI reset refused: bridge contains other devices or isolation is unknown')
     if target.drivers.get(target.bdf) not in (None,'nvidia'):
         raise RecoveryError('VFIO/other driver lifecycle is unsupported; supply a verified backend')
-    if not target.reset_methods and not (root/target.bridge/'reset_subordinate').exists():
+    methods=kernel_reset_paths(target,cfg,root)
+    if not methods:
         raise RecoveryError('No kernel reset mechanism exposed')
     detached=[];blocked=False
     try:
@@ -503,10 +526,6 @@ def detached_reset(target,cfg,root=SYSFS):
         for bdf in sorted(target.drivers,key=lambda x:x==target.bdf):
             write_sysfs(root/bdf/'driver/unbind',bdf)
             detached.append(bdf)
-        methods=[]
-        if target.reset_methods: methods.append(root/target.bdf/'reset')
-        subordinate=root/target.bridge/'reset_subordinate'
-        if subordinate.exists(): methods.append(subordinate)
         errors=[]
         for method in methods:
             try:

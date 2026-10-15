@@ -39,6 +39,8 @@ Discovery reports advertised FLR, PCI configuration reachability, the driver's r
 
 The NVIDIA reset normally uses FLR. If the driver reports `Bus Reset`, the script requests that mode on an isolated single-GPU setup. You can also set `"nvidia_reset_mode": "flr"` or `"bus"` in the config. An OS permission rejection stops the attempt.
 
+The kernel fallback can also use `"kernel_reset_mode": "bus"` to select an exposed, isolated bridge reset directly. The default `"auto"` selects it when PCI configuration returns all ones or zero. See [GPU families and firmware](docs/gpu-families.md) for the 4090/5090 source review, reset modes, hardware test coverage, and `gpu-firmware-audit` usage.
+
 For a closer look at firmware reset controls, install ACPICA's `iasl` tool and run:
 
 ```bash

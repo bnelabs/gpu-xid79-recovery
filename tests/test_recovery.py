@@ -162,6 +162,37 @@ class RecoveryTests(unittest.TestCase):
             self.assertTrue(calls[2].endswith('07:00.0/reset'))
             self.assertTrue(calls[3].endswith('drivers/nvidia/bind'))
             self.assertTrue(calls[4].endswith('drivers/snd_hda_intel/bind'))
+    def test_bus_mode_resets_bridge_and_restores_slot_drivers(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root)
+            target.drivers={target.bdf:'nvidia','0000:07:00.1':'snd_hda_intel'}
+            (root/target.bridge/'reset_subordinate').touch()
+            with patch.object(g,'write_sysfs') as write:
+                g.detached_reset(target,{'kernel_reset_mode':'bus'},root)
+            paths=[str(c.args[0]) for c in write.call_args_list]
+            self.assertEqual(paths[2],str(root/target.bridge/'reset_subordinate'))
+            self.assertFalse(any(p.endswith('/reset') for p in paths))
+            self.assertTrue(paths[3].endswith('/drivers/nvidia/bind'))
+            self.assertTrue(paths[4].endswith('/drivers/snd_hda_intel/bind'))
+    def test_lost_link_auto_selects_upstream_reset_without_model_names(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root)
+            bus=root/target.bridge/'reset_subordinate';bus.touch()
+            for vendor in (b'\xff\xff',b'\x00\x00'):
+                (root/target.bdf/'config').write_bytes(vendor)
+                self.assertEqual(g.kernel_reset_paths(target,{},root),[bus])
+            (root/target.bdf/'config').write_bytes(b'\xde\x10')
+            self.assertEqual(g.kernel_reset_paths(target,{},root),[root/target.bdf/'reset',bus])
+    def test_unavailable_or_invalid_reset_mode_stops_before_detach(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root)
+            for mode in ('bus','unknown'):
+                with patch.object(g,'write_sysfs') as write:
+                    with self.assertRaises(g.RecoveryError):g.detached_reset(target,{'kernel_reset_mode':mode},root)
+                    write.assert_not_called()
     def test_timeout_does_not_wait_forever_or_run_next_stage(self):
         with self.assertRaises(g.CommandTimeout):g.run(['/usr/bin/python3','-c','import time;time.sleep(10)'],.02)
     def test_xid_parser_targets_only_79(self):

@@ -585,6 +585,11 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
         report['selection']='verified profile: '+profile_id
     else:
         report['selection']='targeted NVML reset, then isolated kernel reset if available'
+    if report['selected_backend'] and 'domain' in report['selected_backend']:
+        from domain_adapter import members
+        try:report['lifecycle_domain']={'members':members(sys.modules[__name__],report['selected_backend']),
+                                       'requires_adapter_preflight':True,'hardware_recovery_verified':False}
+        except RecoveryError as error:report['lifecycle_domain']={'configuration_error':str(error)}
     report['reset_assessment']=reset_assessment(report)
     report['kernel_fallback_assessment']=kernel_fallback_assessment(report,len(discover(root)))
     return report
@@ -777,6 +782,7 @@ def recover(target,cfg,backend_only=False):
     if os.geteuid(): raise RecoveryError('Recovery requires root')
     # Rebuild the inventory for every attempt, including watcher-triggered recovery.
     # No services or PCI state have been changed at this point.
+    explicit_backend=cfg.get('backends',{}).get(target.bdf)
     target=inspect(target.bdf)
     report=explore(target,cfg)
     log('Board exploration: '+json.dumps(report,sort_keys=True))
@@ -796,6 +802,10 @@ def recover(target,cfg,backend_only=False):
         for name,value in match.items():
             if name not in ('board_name','board_vendor','product_name'): raise RecoveryError('Unknown backend identity field')
             if text(pathlib.Path('/sys/class/dmi/id')/name)!=value: raise RecoveryError(f'Backend mismatch: {name}')
+    if backend and 'domain' in backend:
+        if not explicit_backend or explicit_backend!=backend:raise RecoveryError('Domains require explicit backend configuration, not automatic profiles')
+        from domain_adapter import execute
+        return execute(sys.modules[__name__],target,cfg,backend)
     if not target.isolated and (backend_only or (backend and backend.get('prefer_backend'))):
         raise RecoveryError('Unknown/shared PCI reset scope; lifecycle backend refused')
     lock=open('/run/gpu-recovery-orchestrator.lock','w')
@@ -862,6 +872,10 @@ def nvml_identity(bdf):
 def resume(bdf,cfg):
     if os.geteuid():raise RecoveryError('Service restoration requires root')
     target=inspect(bdf)
+    backend=cfg.get('backends',{}).get(bdf)
+    if backend and 'domain' in backend:
+        from domain_adapter import execute
+        return execute(sys.modules[__name__],target,cfg,backend,reset=False)
     with open('/run/gpu-recovery-orchestrator.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         effective=discovered_config(explore(target,cfg),cfg)
@@ -900,31 +914,56 @@ class Watcher:
         try:Services(service_items(self.cfg,bdf),bdf).stop();return True
         except Exception as error:
             self.failed.add(bdf);log(f'{bdf}: cannot hold configured services: {error}');return False
+    def affected(self,bdf):
+        backend=self.cfg.get('backends',{}).get(bdf,{})
+        if 'domain' not in backend:return [bdf]
+        from domain_adapter import members
+        approved=members(sys.modules[__name__],backend)
+        if bdf not in approved:raise RecoveryError('Watcher target missing from domain')
+        for member,uuid in approved.items():
+            if member in self.identities and self.identities[member]!=uuid:
+                raise IdentityMismatch('Domain contradicts pinned identity')
+            self.identities[member]=uuid
+        return sorted(approved)
     def check(self,bdf,event=False,event_time=None):
+        try:affected=self.affected(bdf)
+        except RecoveryError as error:
+            self.hold(bdf);self.failed.add(bdf);log(f'{bdf}: invalid domain: {error}');return
+        def hold_all():
+            results=[self.hold(member) for member in affected]
+            return all(results)
         try:
             uuid=nvml_identity(bdf)
             if bdf in self.identities and self.identities[bdf]!=uuid:
-                self.hold(bdf);self.failed.add(bdf)
+                hold_all();self.failed.update(affected)
                 log(f'{bdf}: UUID changed; services held, recovery refused');return
             if bdf not in self.identities:
                 self.identities[bdf]=uuid;self.save_budget()
             if not event or event_time is not None and event_time<=self.last_end.get(bdf,0):return
         except IdentityMismatch as error:
-            self.hold(bdf);self.failed.add(bdf)
+            hold_all();self.failed.update(affected)
             log(f'{bdf}: untrusted health identity; no reset attempted: {error}');return
         except (CommandTimeout,OSError) as error:
-            self.hold(bdf);self.failed.add(bdf)
+            hold_all();self.failed.update(affected)
             log(f'{bdf}: blocked/unavailable health command; no reset attempted: {error}');return
         except RecoveryError:pass
-        if not self.hold(bdf):return
-        now=time.monotonic();history=self.attempts[bdf]
-        while history and now-history[0]>=3600:history.popleft()
-        if bdf in self.failed or len(history)>=3:
-            log(f'{bdf}: recovery suppressed; configured services remain held');return
-        history.append(now);self.save_budget()
-        try:recover(inspect(bdf),self.cfg)
-        except Exception as error:self.failed.add(bdf);log(f'{bdf}: recovery failed; services held: {error}')
-        finally:self.last_end[bdf]=time.monotonic()
+        if not hold_all():self.failed.update(affected);return
+        now=time.monotonic()
+        for member in affected:
+            history=self.attempts[member]
+            while history and now-history[0]>=3600:history.popleft()
+        if self.failed.intersection(affected) or any(len(self.attempts[member])>=3 for member in affected):
+            log(f'{bdf}: recovery suppressed; configured domain services remain held');return
+        for member in affected:self.attempts[member].append(now)
+        self.save_budget()
+        try:
+            recovered=recover(inspect(bdf),self.cfg)
+            if isinstance(recovered,list) and set(recovered)!=set(affected):
+                raise RecoveryError('Recovered domain disagrees with watcher budget scope')
+        except Exception as error:self.failed.update(affected);log(f'{bdf}: recovery failed; services held: {error}')
+        finally:
+            end=time.monotonic()
+            for member in affected:self.last_end[member]=end
 
 
 def watch(cfg):
@@ -932,6 +971,13 @@ def watch(cfg):
     allowed=set(cfg.get('watch_gpus',[]))
     if not allowed or any(not isinstance(bdf,str) or not BDF.fullmatch(bdf) for bdf in allowed):
         raise RecoveryError('Explicit watch_gpus PCI allowlist required')
+    for bdf in allowed:
+        backend=cfg.get('backends',{}).get(bdf,{})
+        if 'domain' in backend:
+            from domain_adapter import members
+            approved=members(sys.modules[__name__],backend)
+            if not set(approved)<=allowed or any(cfg.get('backends',{}).get(member)!=backend for member in approved):
+                raise RecoveryError('Every domain member must be watched with the same explicit backend configuration')
     interval=cfg.get('watch_health_interval',15)
     if not isinstance(interval,(int,float)) or not 5<=interval<=3600:
         raise RecoveryError('watch_health_interval must be 5..3600 seconds')

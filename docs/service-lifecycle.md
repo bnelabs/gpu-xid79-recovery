@@ -98,3 +98,5 @@ validation and no GPU reset.
 The unchanged generic reset path also passed an x86-64 QEMU isolated-target test
 and an ARM64 shared-bridge refusal test. These use synthetic endpoints and do not
 validate NVIDIA firmware or enterprise physical recovery.
+
+Explicit adapters can now coordinate a [local GPU domain](domain-adapters.md), with whole-domain validation, holds and budgets. Hardware and tenant lifecycle implementation remains adapter-specific.

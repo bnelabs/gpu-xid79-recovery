@@ -97,3 +97,7 @@ For actual NVIDIA core-module failed-probe tests against a deliberately dead vfi
 `--trace-reset` records actual kernel reset calls with guest-only kprobes during
 an isolated default test. It requires tracefs/kprobe support and cannot be
 combined with other modes. See [observed paths and hotplug limits](../../docs/kernel-reset-lifecycle.md).
+
+`--domain` runs the production local-domain adapter path with two synthetic
+endpoints and a guest-only backend. It can combine with `--shared`, but not other
+experiment modes. See [domain results and substitutions](../../docs/domain-adapters.md).

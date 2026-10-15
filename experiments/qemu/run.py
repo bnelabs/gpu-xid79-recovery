@@ -8,7 +8,7 @@ def copy_file(source,root,destination=None):
  destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source.resolve(),destination)
 
 
-def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_peer=None,missing=False):
+def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_peer=None,missing=False,domain=False):
  if userspace:
   shutil.copytree(userspace,root,dirs_exist_ok=True,symlinks=True)
  else:
@@ -29,7 +29,10 @@ def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_p
  # The real production controller is copied unchanged into the guest.
  repo=pathlib.Path(__file__).resolve().parents[2]
  copy_file(repo/'gpu_recovery.py',root,'lab/gpu_recovery.py')
- copy_file(pathlib.Path(__file__).with_name('missing_guest.py' if missing else 'scope_guest.py' if scope_peer else 'aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ copy_file(pathlib.Path(__file__).with_name('domain_guest.py' if domain else 'missing_guest.py' if missing else 'scope_guest.py' if scope_peer else 'aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ if domain:
+  copy_file(repo/'domain_adapter.py',root,'lab/domain_adapter.py')
+  copy_file(pathlib.Path(__file__).with_name('domain_backend.py'),root,'lab/domain_backend.py')
  if missing:copy_file(repo/'experiments/topology_snapshot.py',root,'lab/topology_snapshot.py')
  if aer_driver:copy_file(aer_driver,root,'lab/aer_test_driver.ko')
  stub=root/'usr/bin/nvidia-smi'
@@ -43,6 +46,12 @@ export PATH=/usr/bin:/bin
 /usr/bin/python3 /lab/guest.py
 /bin/busybox poweroff -f
 ''');init.chmod(0o755)
+ # Generated directories inherit the caller's umask; privileged tool paths
+ # inside the guest must still satisfy the controller's root-managed checks.
+ root.chmod(0o755)
+ for name in ('usr','usr/bin','bin','lab'):(root/name).chmod(0o755)
+ for path in (root/'lab').iterdir():
+  if path.is_file():path.chmod(path.stat().st_mode & ~0o022)
 
 
 def main():
@@ -55,9 +64,11 @@ def main():
  parser.add_argument('--aer',action='store_true',help='Inject a synthetic fatal AER into the guest root port')
  parser.add_argument('--aer-driver',type=pathlib.Path,help='Synthetic testdev kernel module loaded inside the AER guest only')
  parser.add_argument('--scope-peer',choices=['nvme','gpu'],help='Test recovery scope with an NVMe controller or a second admitted synthetic GPU')
+ parser.add_argument('--domain',action='store_true',help='Exercise explicitly approved synthetic two-device domain; no NVIDIA hardware claim')
  parser.add_argument('--trace-reset',action='store_true',help='Trace real guest kernel reset calls; isolated default fixture only')
  parser.add_argument('--missing',action='store_true',help='Test guest logical removal and scoped rediscovery; no physical link-loss simulation')
  args=parser.parse_args()
+ if args.domain and (args.slot_power or args.aer or args.scope_peer or args.missing or args.trace_reset):parser.error('--domain cannot combine with other modes except --shared')
  if args.trace_reset and (args.shared or args.slot_power or args.aer or args.scope_peer or args.missing):parser.error('--trace-reset requires the default isolated fixture')
  if args.slot_power and args.shared:parser.error('Slot-power experiment requires separate bridges')
  if args.aer and (args.shared or args.slot_power):parser.error('AER experiment requires separate bridges and no slot-power mode')
@@ -67,8 +78,8 @@ def main():
  if args.arch=='aarch64' and not args.userspace:parser.error('ARM64 requires matching guest userspace')
  if not args.userspace and os.uname().machine!='x86_64':parser.error('Automatic userspace construction currently supports x86_64 hosts')
  with tempfile.TemporaryDirectory(prefix='gpu-qemu-') as directory:
-  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power,args.aer,args.aer_driver,args.scope_peer,args.missing)
-  names=[str(path.relative_to(root)) for path in sorted(root.rglob('*'))]
+  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power,args.aer,args.aer_driver,args.scope_peer,args.missing,args.domain)
+  names=['.',*[str(path.relative_to(root)) for path in sorted(root.rglob('*'))]]
   packed=subprocess.run(['cpio','--null','-o','--format=newc','--owner=0:0'],cwd=root,
                         input=('\0'.join(names)+'\0').encode(),capture_output=True,check=True)
   initrd=base/'initrd.gz';initrd.write_bytes(gzip.compress(packed.stdout,compresslevel=1))

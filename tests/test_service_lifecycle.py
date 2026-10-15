@@ -73,6 +73,26 @@ class WatcherTests(unittest.TestCase):
   self.path=pathlib.Path(self.temp.name)/'budget.json'
   self.trust=patch.object(g,'trusted_file',side_effect=lambda p:p);self.trust.start();self.addCleanup(self.trust.stop)
  def controller(self,cfg=None):return g.Watcher(cfg or {},self.path)
+ def domain_config(self):
+  backend={'domain':{'members':{A:UUID,B:'GPU-66666666-7777-8888-9999-aaaaaaaaaaaa'}}}
+  return {'watch_gpus':[A,B],'backends':{A:backend,B:backend}}
+ def test_domain_attempt_is_charged_to_every_member(self):
+  with patch.object(g,'nvml_identity',side_effect=g.RecoveryError('offline')),patch.object(g,'Services'),patch.object(g,'inspect',return_value=Mock()),patch.object(g,'recover',return_value=[A,B]) as recover:
+   c=self.controller(self.domain_config())
+   c.check(A);self.assertEqual(len(c.attempts[B]),1)
+   self.assertEqual(c.last_end[A],c.last_end[B])
+   c.check(B);c.check(A);c.check(B);self.assertEqual(recover.call_count,3)
+   self.assertEqual(len(c.attempts[A]),3);self.assertEqual(len(c.attempts[B]),3)
+ def test_domain_identity_mismatch_holds_all_members(self):
+  with patch.object(g,'nvml_identity',return_value='GPU-other'),patch.object(g,'Services') as services,patch.object(g,'recover') as recover:
+   c=self.controller(self.domain_config());c.check(A)
+   self.assertEqual(services.return_value.stop.call_count,2);recover.assert_not_called()
+   self.assertEqual(c.failed,{A,B})
+ def test_watch_requires_all_domain_members_and_consistent_config(self):
+  cfg=self.domain_config();cfg['watch_gpus']=[A]
+  with patch.object(g.os,'geteuid',return_value=0),patch.object(g.subprocess,'Popen') as popen:
+   with self.assertRaisesRegex(g.RecoveryError,'Every domain member'):g.watch(cfg)
+   popen.assert_not_called()
  def test_journal_exit_does_not_leave_watcher_waiting_on_child(self):
   journal=Mock();journal.stdout=[];journal.poll.return_value=None
   # A real empty pipe reaches EOF; use an object with the same iterator/close interface.

@@ -152,6 +152,8 @@ On multi-GPU, NVLink, MIG, and virtualized systems, a failed NVIDIA reset needs 
 
 Boards that need a separate PERST signal or slot power control also need an adapter. These controls depend on the board's wiring and firmware.
 
+Explicit local multi-GPU adapters can use the [domain contract](docs/domain-adapters.md): approved UUIDs, full-scope service holds, fresh preflight receipts and all-member workload/fabric validation. This adds orchestration, not an enterprise hardware backend.
+
 ## Platform adapters
 
 An adapter handles the reset, PCI restoration, and driver cleanup for a particular platform. It must check hardware identity, reset scope, and supported kernel and driver versions, then return a nonzero exit code if recovery fails.

@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "unprofiled_batch_missing_import": "joblib",
+  "upstream_revision": "27e9534ee0c3d594030e2519d4a418b3f0a7860f",
+  "pandas_version": "3.0.6",
+  "profiles": [
+    "NVIDIA_A100-SXM4-40GB",
+    "Quadro_RTX_6000",
+    "Tesla_K80",
+    "Tesla_M40",
+    "Tesla_P100-PCIE-16GB",
+    "Tesla_V100-PCIE-32GB"
+  ],
+  "cases": [
+    {
+      "profile": "NVIDIA_A100-SXM4-40GB",
+      "mode": "sync",
+      "expected_seconds": 0.013828128576278602,
+      "elapsed_seconds": 0.014157156001601834,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "NVIDIA_A100-SXM4-40GB",
+      "mode": "async",
+      "expected_seconds": 0.013828128576278602,
+      "elapsed_seconds": 0.016946288000326604,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "NVIDIA_A100-SXM4-40GB",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.013828128576278602,
+      "elapsed_seconds": 0.016868125003384193,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Quadro_RTX_6000",
+      "mode": "sync",
+      "expected_seconds": 0.0239930450916289,
+      "elapsed_seconds": 0.024383378997299587,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Quadro_RTX_6000",
+      "mode": "async",
+      "expected_seconds": 0.0239930450916289,
+      "elapsed_seconds": 0.027091050000308314,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Quadro_RTX_6000",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.0239930450916289,
+      "elapsed_seconds": 0.027227026999753434,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_K80",
+      "mode": "sync",
+      "expected_seconds": 0.0406990647315977,
+      "elapsed_seconds": 0.041017759998794645,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_K80",
+      "mode": "async",
+      "expected_seconds": 0.0406990647315977,
+      "elapsed_seconds": 0.044252159001189284,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_K80",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.0406990647315977,
+      "elapsed_seconds": 0.04441513600249891,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_M40",
+      "mode": "sync",
+      "expected_seconds": 0.0203030705451963,
+      "elapsed_seconds": 0.020619727998564485,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_M40",
+      "mode": "async",
+      "expected_seconds": 0.0203030705451963,
+      "elapsed_seconds": 0.023153602000093088,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_M40",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.0203030705451963,
+      "elapsed_seconds": 0.023235762000695104,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_P100-PCIE-16GB",
+      "mode": "sync",
+      "expected_seconds": 0.011983722448348801,
+      "elapsed_seconds": 0.01237147299980279,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_P100-PCIE-16GB",
+      "mode": "async",
+      "expected_seconds": 0.011983722448348801,
+      "elapsed_seconds": 0.014023651001480175,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_P100-PCIE-16GB",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.011983722448348801,
+      "elapsed_seconds": 0.014060738998523448,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_V100-PCIE-32GB",
+      "mode": "sync",
+      "expected_seconds": 0.013250499963760301,
+      "elapsed_seconds": 0.013641183999425266,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_V100-PCIE-32GB",
+      "mode": "async",
+      "expected_seconds": 0.013250499963760301,
+      "elapsed_seconds": 0.016994706998957554,
+      "memory_cap_rejected": true,
+      "passed": true
+    },
+    {
+      "profile": "Tesla_V100-PCIE-32GB",
+      "mode": "cancel-and-restart",
+      "expected_seconds": 0.013250499963760301,
+      "elapsed_seconds": 0.017219761000887956,
+      "memory_cap_rejected": true,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "upstream_input_sha256": {
+    "gpemu/gpemu/gpemu/emulators.py": "b97fe631b382015aa35e67c6c5b95982e0596fca94fbf97690decd71812de777",
+    "profiled_data/time/compute/forward/NVIDIA_A100-SXM4-40GB/resnet18/time_by_batch_size.csv": "d538b018533138248f5eae973b2dae556ab74d86a68df5ff0031084098756ef9",
+    "profiled_data/time/compute/backward/NVIDIA_A100-SXM4-40GB/resnet18/time_by_batch_size.csv": "fc8ad9425b1b3bd92da9ee33d75127854f7d17d38911e9ab9bef5f7b17a2045a",
+    "profiled_data/time/transfer/NVIDIA_A100-SXM4-40GB/resnet18/data_transfer_time_by_batch_size.csv": "6baf102d2a4d5f8d7daca8363516a3d1adcd4188bfff78feea4fc2fcad867154",
+    "profiled_data/time/transfer/NVIDIA_A100-SXM4-40GB/resnet18/model_transfer_time.txt": "28dea6e66d5c2f6d2ada802d833ac10a42d956aa93b314148d245e1721cf1a1c",
+    "profiled_data/memory/NVIDIA_A100-SXM4-40GB/resnet18/memory.csv": "37988f1506655eaa26370950d75dd90fad941eda5a1ed7130b6646582f6fd916",
+    "profiled_data/time/compute/forward/Quadro_RTX_6000/resnet18/time_by_batch_size.csv": "4d43328e90d8aff60212ee85688ff5be32bf10c21aa7759aadcf9dbeaef58965",
+    "profiled_data/time/compute/backward/Quadro_RTX_6000/resnet18/time_by_batch_size.csv": "113d63fd02f36918f76a9266905c431d8d3c269039a5583c12fe06050421b73c",
+    "profiled_data/time/transfer/Quadro_RTX_6000/resnet18/data_transfer_time_by_batch_size.csv": "cffb8ac6cec496b75d027e4a4193d65a872090ecc9eda960a0045dd89c9fa29b",
+    "profiled_data/time/transfer/Quadro_RTX_6000/resnet18/model_transfer_time.txt": "5e409bee1c11999cdb4f190bed3ae9aa20b084264526cc28699cb469f8c0e74b",
+    "profiled_data/memory/Quadro_RTX_6000/resnet18/memory.csv": "31e48167a17deb6ee4decec8e50745f5c86ef169c37f3e2676ed70d0cc82234f",
+    "profiled_data/time/compute/forward/Tesla_K80/resnet18/time_by_batch_size.csv": "f51ce132a437f0d7af935e3f0ba19e6f02e2c267e408baa3eee682bf1decb008",
+    "profiled_data/time/compute/backward/Tesla_K80/resnet18/time_by_batch_size.csv": "e141162b0fa36f2adebe25001f08ededebe795e1641575d4e35ddcf396d1d948",
+    "profiled_data/time/transfer/Tesla_K80/resnet18/data_transfer_time_by_batch_size.csv": "287c9dd5e302ed85875fbe3406aca4f76e4d6aa537b97b6f1908fb4978ab39d8",
+    "profiled_data/time/transfer/Tesla_K80/resnet18/model_transfer_time.txt": "0e80e6a45fe515946e6c7bdb0a2c59fc066dcb6a1c0d5154d2d0bd41eb77efb2",
+    "profiled_data/memory/Tesla_K80/resnet18/memory.csv": "440d4c79d4424da7b81b68f9393a2e57f31be636022de42a12ee885ce7aba3db",
+    "profiled_data/time/compute/forward/Tesla_M40/resnet18/time_by_batch_size.csv": "da23c1f040502a56cf6de1edfe4267e9e36986fdbfa655bdb56f2ec1bd6174c4",
+    "profiled_data/time/compute/backward/Tesla_M40/resnet18/time_by_batch_size.csv": "c16b522b46ec993e3f5d0b877901b2071301803975a502757b281d1c541b0bdd",
+    "profiled_data/time/transfer/Tesla_M40/resnet18/data_transfer_time_by_batch_size.csv": "3677276385ff50cd0411c510810d254be1bfa90a5a49b079521c4618354970cc",
+    "profiled_data/time/transfer/Tesla_M40/resnet18/model_transfer_time.txt": "23c3c442cd66d3cdf0b4b35845754fb43953728974e99a0170008b58c3d8954c",
+    "profiled_data/memory/Tesla_M40/resnet18/memory.csv": "399158d5622e161986ca6a4f44d36229a3607aba0fff86433489580aff9733f8",
+    "profiled_data/time/compute/forward/Tesla_P100-PCIE-16GB/resnet18/time_by_batch_size.csv": "d39c470a6b1a0acc90c36b78c6a85b73c1aada931be2ef2c6d992f1e8edfb1cd",
+    "profiled_data/time/compute/backward/Tesla_P100-PCIE-16GB/resnet18/time_by_batch_size.csv": "b795a96064ce7613ba86a3bbefe9b4742df00349a20a0a0af0059262709f135b",
+    "profiled_data/time/transfer/Tesla_P100-PCIE-16GB/resnet18/data_transfer_time_by_batch_size.csv": "b16ce67a1ff089f44b73f4aed34746d383a916305f1c7e159e525ac427a49c8b",
+    "profiled_data/time/transfer/Tesla_P100-PCIE-16GB/resnet18/model_transfer_time.txt": "f48feb22b9d4f9ec9e35b2658055ec00358821d9b5d2e880a96923f032ed31eb",
+    "profiled_data/memory/Tesla_P100-PCIE-16GB/resnet18/memory.csv": "933199398744f0c81596250bc5d070638914ff89a7efbb6dd6699c95c1b289f2",
+    "profiled_data/time/compute/forward/Tesla_V100-PCIE-32GB/resnet18/time_by_batch_size.csv": "5f01afe508a6ddd6ba8bd68c6373f55b14aaddc10c417630a04f70c7098a6a54",
+    "profiled_data/time/compute/backward/Tesla_V100-PCIE-32GB/resnet18/time_by_batch_size.csv": "066044dccca70093efb59e20425ec30693280b0fe11c39603d510f044a779e1c",
+    "profiled_data/time/transfer/Tesla_V100-PCIE-32GB/resnet18/data_transfer_time_by_batch_size.csv": "c211dff0812fcc1b9782d8f5972f51cc365a85164efe0e7ef4d5b8ac5efa4522",
+    "profiled_data/time/transfer/Tesla_V100-PCIE-32GB/resnet18/model_transfer_time.txt": "3495716c378e4d3020a757df2cd91a223835eb33a611834c6091d78d2a7b6ffb",
+    "profiled_data/memory/Tesla_V100-PCIE-32GB/resnet18/memory.csv": "79c9dc39b5b0160617d444fa28b433426ac85b2e576703559214d80cc6521ade"
+  },
+  "experiment_sha256": "c3ac8d0c89d46ab9be16bc1cdeae25953804584842c32c52d6006ddcd96ea3c0",
+  "nvidia_recovery_verified": false,
+  "pcie_or_firmware_emulated": false,
+  "custom_pytorch_or_kubernetes_deployed": false,
+  "limitations": [
+    "Workload timing/cancellation only; cancellation is injected by this harness",
+    "No numerical training, CUDA, PCIe, firmware or electrical reset",
+    "Single-GPU batch-size-1 CSV rows; no interpolation, scaling or profile accuracy validation"
+  ]
+}

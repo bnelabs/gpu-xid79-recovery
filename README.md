@@ -247,3 +247,7 @@ Switchtec/NVIDIA recovery remains untested.
 53 sourced platform/configuration records across x86, ARM and POWER9, with
 explicit BIOS/firmware gaps and distinctions between PCIe, NVSwitch, coherent
 modules, racks and cloud ownership. It is research, not recovery certification.
+
+The [GPEmu assessment](docs/gpemu-assessment.md) includes a reproducible CPU-only
+check of upstream timing workloads. GPEmu can support future drain/restart
+experiments; it does not emulate NVIDIA firmware or PCIe recovery.

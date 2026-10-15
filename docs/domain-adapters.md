@@ -58,8 +58,10 @@ provisioned UUID and runs each configured/default workload check. The final
 adapter validator must also confirm the required fabric/partition state.
 Services are released only after all these checks pass.
 
-A member that has disappeared from sysfs is still unsupported. This interface
-does not bypass missing-device identity rules. It also cannot infer hidden board
+Without a prepared capsule, a member that has disappeared from sysfs remains
+unsupported. The optional [prepared-domain path](prepared-domain-recovery.md)
+adds boot-bound cached scope, fresh independent-control confirmation and child-bus
+rediscovery for absent functions. It also cannot infer hidden board
 wiring or devices owned by another host.
 
 ## Adapter protocol
@@ -75,6 +77,7 @@ Each stage receives these environment variables:
 | `GPU_RECOVERY_BOOT_ID` | Current Linux boot ID |
 | `GPU_RECOVERY_NONCE` | Fresh unpredictable token for this operation |
 | `GPU_RECOVERY_INTENT` | `recover` for a reset attempt, or `resume` for verification without resetting |
+| `GPU_MISSING_FUNCTIONS` | JSON array of initially missing captured slot functions; empty for ordinary recovery |
 
 Preflight and validation must return a single JSON object, without additional
 output on stdout or stderr. The current command runner merges both streams.

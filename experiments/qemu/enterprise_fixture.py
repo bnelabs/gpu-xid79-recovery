@@ -72,7 +72,9 @@ class BMC(http.server.BaseHTTPRequestHandler):
                 return self.reply(500)
             # Model the CPLD's sideband reset using a real guest-kernel bridge
             # reset. Sibling testdevs share reset just as the declared domain says.
-            parent = (g.SYSFS / bdf).resolve().parent
+            parent = pathlib.Path(cfg['parents'][bdf])
+            if not parent.exists() or not g.text(parent/'class').startswith('0x0604'):
+                raise RuntimeError('Independent fixture reset controller lost its mapped parent')
             g.write_sysfs(parent / 'reset_subordinate', '1')
             if cfg['fault'] == 'dropped-response':
                 self.connection.shutdown(2)
@@ -98,21 +100,36 @@ def lifecycle():
     if members != cfg['members']:
         raise RuntimeError('Fixture membership differs')
     actual = set()
+    absent = []
     for bdf in members:
         device = g.SYSFS / bdf
-        if g.text(device / 'vendor') != '0x1b36' or g.text(device / 'device') != '0x0005':
-            raise RuntimeError('Fixture device differs')
-        actual.update(p.name for p in device.resolve().parent.rglob('*') if g.BDF.fullmatch(p.name))
-    if set(scope) != actual:
+        parent = pathlib.Path(cfg['parents'][bdf])
+        if not parent.exists() or not g.text(parent/'class').startswith('0x0604'):
+            raise RuntimeError('Fixture independent controller mapping changed')
+        if device.exists():
+            if g.text(device / 'vendor') != '0x1b36' or g.text(device / 'device') != '0x0005':
+                raise RuntimeError('Fixture device differs')
+            if device.resolve().parent != parent:
+                raise RuntimeError('Fixture member moved to another reset group')
+        else:
+            absent.append(bdf)
+        actual.update(p.name for p in parent.rglob('*') if g.BDF.fullmatch(p.name))
+    if not actual <= set(scope) or set(scope) != set(members):
         raise RuntimeError('Fixture reset scope differs')
+    requested_missing = json.loads(os.environ.get('GPU_MISSING_FUNCTIONS', '[]'))
+    if os.environ['GPU_RECOVERY_PHASE'] == 'preflight' and sorted(absent) != requested_missing:
+        raise RuntimeError('Fixture missing-function state differs')
     if any((pathlib.Path('/run/enterprise-services') / unit).exists() for unit in cfg['services']):
         raise RuntimeError('Synthetic workloads still running')
     phase = os.environ['GPU_RECOVERY_PHASE']
     event(kind='lifecycle', phase=phase)
     value = {'schema': 1, 'nonce': os.environ['GPU_RECOVERY_NONCE'],
         'boot_id': g.text('/proc/sys/kernel/random/boot_id'), 'members': cfg['members'],
-        'scope_bdfs': sorted(actual), 'exclusive_local_control': True,
+        'scope_bdfs': sorted(scope), 'exclusive_local_control': True,
         'host_reboot_required': False, 'clients_quiesced': True, 'ready': True}
+    if requested_missing:
+        value.update(missing_functions=requested_missing,
+                     independent_reset_control=cfg['fault'] != 'capsule-no-independent-control')
     if cfg['fault'] == 'ownership-denied':
         value['exclusive_local_control'] = False
     if phase == 'validation':

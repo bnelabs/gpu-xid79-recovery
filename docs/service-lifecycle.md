@@ -100,3 +100,12 @@ and an ARM64 shared-bridge refusal test. These use synthetic endpoints and do no
 validate NVIDIA firmware or enterprise physical recovery.
 
 Explicit adapters can now coordinate a [local GPU domain](domain-adapters.md), with whole-domain validation, holds and budgets. Hardware and tenant lifecycle implementation remains adapter-specific.
+
+## Prepared missing-device recovery
+
+An explicit lifecycle domain can configure a [pre-fault recovery capsule](prepared-domain-recovery.md).
+The watcher refreshes it under the orchestration lock after successful identity
+polls. A prepared GPU missing from sysfs skips the otherwise unnecessary NVML
+query and enters the same whole-domain hold/budget path. A valid capsule and a
+fresh independent-control receipt are required before any reset or scoped
+rediscovery. Generic recovery without the capsule still refuses missing GPUs.

@@ -36,6 +36,7 @@ def main():
             copy_file(lab/name, root, 'lab/'+name)
         copy_file(lab/'enterprise_guest.py', root, 'lab/guest.py')
         copy_file(repo/'domain_adapter.py', root, 'lab/domain_adapter.py')
+        copy_file(repo/'recovery_capsule.py', root, 'lab/recovery_capsule.py')
         copy_file(repo/'adapters/redfish_gpu.py', root, 'lab/adapters/redfish_gpu.py')
         copy_file(repo/'adapters/reset_journal.py', root, 'lab/adapters/reset_journal.py')
         (root/'lab/adapters').chmod(0o755)
@@ -93,7 +94,7 @@ esac
         report['qemu_returncode'] = rc
         report['qemu_version'] = subprocess.check_output([command[0], '-version'], text=True).splitlines()[0]
         report['inputs_sha256'] = {str(path.relative_to(repo)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (repo/'gpu_recovery.py', repo/'domain_adapter.py', repo/'adapters/redfish_gpu.py', repo/'adapters/reset_journal.py',
+            for path in (repo/'gpu_recovery.py', repo/'domain_adapter.py', repo/'recovery_capsule.py', repo/'adapters/redfish_gpu.py', repo/'adapters/reset_journal.py',
                          lab/'enterprise_guest.py', lab/'enterprise_fixture.py', pathlib.Path(__file__).resolve())}
         report['kernel_sha256'] = hashlib.sha256(args.kernel.read_bytes()).hexdigest()
         args.output.write_text(json.dumps(report, indent=2)+'\n')

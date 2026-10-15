@@ -287,7 +287,11 @@ class Adapter:
         class Runner:
             RecoveryError = g.RecoveryError
             run = staticmethod(bounded_run)
-        value = domain.receipt(Runner, command, helper_env, approved, scope, boot, nonce, check_phase)
+        missing = json.loads(env.get('GPU_MISSING_FUNCTIONS', '[]'))
+        if not isinstance(missing, list) or any(not isinstance(v, str) or not g.BDF.fullmatch(v) or v not in scope for v in missing):
+            raise g.RecoveryError('Malformed missing-function scope')
+        value = domain.receipt(Runner, command, helper_env, approved, scope, boot, nonce, check_phase,
+                               {'missing_functions': missing, 'independent_reset_control': True} if missing else None)
         if phase == 'recover':
             if self.inventory() != inventory:
                 raise g.RecoveryError('BMC identity or action changed after lifecycle check')

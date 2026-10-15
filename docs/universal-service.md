@@ -35,7 +35,7 @@ fault that makes NVML unavailable. The existing runtime reset guards are unchang
 | Isolated PCIe endpoint | Kernel device/ACPI/subordinate reset | Confirm actual reset effect and driver detach/rebind on the exact platform |
 | Lost link that survives upstream reset | Independent PERST or slot-power adapter | Establish physical wiring, polarity, affected devices and transport independence |
 | Multi-GPU / NVSwitch / MIG / virtualized system | Lifecycle domain adapter | Establish ownership, full affected domain, scheduler/tenant drain and partition/fabric restoration |
-| GPU absent from sysfs | Hold and escalate | Missing-device identity/rediscovery lifecycle is not implemented in automatic recovery |
+| GPU absent from sysfs | Prepared capsule plus independent lifecycle adapter; otherwise hold | Boot/config/topology checks, independent identity/control confirmation, scoped rediscovery and full-domain verification |
 | No usable independent control or failed reset | Hold and escalate to platform operator | Node/tray power cycle or hardware repair may be required |
 
 Existing systemd orchestration supplies persistent holds, per-GPU budgets, bounded
@@ -96,3 +96,8 @@ blocking evidence for a broad support claim.
 - [NVIDIA reset semantics and limitations](https://docs.nvidia.com/deploy/nvidia-smi/index.html#device-modification-options)
 - [NVIDIA Xid catalog](https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html)
 - [NVIDIA driver and matching firmware requirements](https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus)
+
+The [prepared-domain implementation](prepared-domain-recovery.md) now removes
+the previously unconditional refusal of vanished PCI functions. It prepares
+identity/scope while available and uses independently mapped controls after
+failure. It does not infer a missing physical reset path from a firmware image.

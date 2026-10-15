@@ -23,7 +23,7 @@ def main():
     bdfs = [p.name for p in devices]
     approved = {bdf: 'GPU-' + f'{index+1:08x}-2222-3333-4444-555555555555'
                 for index, bdf in enumerate(bdfs)}
-    g.discover = lambda root=g.SYSFS: list(bdfs)
+    g.discover = lambda root=g.SYSFS: [p.name for p in devices if p.exists()]
     native_text = g.text
     def fixture_text(path, *args):
         path = pathlib.Path(path)
@@ -45,6 +45,20 @@ def main():
             regions[device.name] = mmap.mmap(fd, 4096)
         finally:
             os.close(fd)
+    parents = {p.name: str(p.resolve().parent) for p in devices}
+    def remap_all():
+        for device in devices:
+            with (device/'config').open('r+b', buffering=0) as stream:
+                stream.seek(4)
+                command = int.from_bytes(stream.read(2), 'little')
+                stream.seek(4)
+                stream.write((command | 2).to_bytes(2, 'little'))
+            old = regions.pop(device.name, None)
+            if old is not None:old.close()
+            fd = os.open(device/'resource0', os.O_RDWR)
+            try:regions[device.name] = mmap.mmap(fd, 4096)
+            finally:os.close(fd)
+    remap_pending = False
     def counts():
         return {bdf: int.from_bytes(region[12:16], 'little') for bdf, region in regions.items()}
     def seed():
@@ -55,6 +69,11 @@ def main():
             raise RuntimeError('Fixture counters not seeded')
     verified = []
     def verify(target, cfg):
+        nonlocal remap_pending
+        if remap_pending:
+            remap_all();remap_pending = False
+        if fixture.state()['fault'] == 'capsule-wrong-uuid' and target.bdf == bdfs[-1]:
+            raise g.IdentityMismatch('Injected replacement UUID after rediscovery')
         if cfg['expected_gpu_uuids'] != approved or counts()[target.bdf] != 0:
             raise g.RecoveryError('Synthetic member workload check failed')
         if fixture.state()['fault'] == 'workload-failed' and target.bdf == bdfs[-1]:
@@ -92,10 +111,19 @@ def main():
         'success', 'wrong-serial', 'cpu-resource', 'node-action', 'unsupported',
         'ownership-denied', 'partial-reset', 'task-failed', 'task-timeout',
         'dropped-response', 'workload-failed', 'fabric-failed', 'stale-validation', 'resume',
-        'restart-blocked', 'reconcile-resume', 'failed-reconciliation']
+        'restart-blocked', 'reconcile-resume', 'failed-reconciliation',
+        'capsule-missing', 'capsule-all-missing', 'capsule-no-independent-control',
+        'capsule-expired', 'capsule-parent-changed', 'capsule-wrong-uuid']
     results = []
     for fault in cases:
+        if any(not p.exists() for p in devices):
+            for parent in sorted(set(parents.values())):
+                g.write_sysfs(g.subordinate_rescan_path(pathlib.Path(parent).name), '1')
+        remap_all()
         seed()
+        backend['domain'].pop('capsule', None)
+        if fault.startswith('capsule-'):
+            backend['domain']['capsule'] = '/var/lib/gpu-recovery-generic/enterprise-capsule.json'
         verified.clear()
         g.SERVICE_STATE.unlink(missing_ok=True)
         journal_path = pathlib.Path('/run/enterprise-reset-journal/operations.json')
@@ -106,10 +134,31 @@ def main():
         for unit in units:
             (service_dir/unit).touch()
         injected = 'dropped-response' if fault in ('restart-blocked', 'reconcile-resume', 'failed-reconciliation') else fault
-        fixture.STATE.write_text(json.dumps({'fault': injected, 'members': approved,
+        fixture.STATE.write_text(json.dumps({'fault': injected, 'members': approved, 'parents': parents,
                                             'services': {unit: True for unit in units}}))
         error = None
+        initially_missing = []
         before = counts()
+        if fault.startswith('capsule-'):
+            import recovery_capsule
+            g.nvml_identity = lambda bdf: approved[bdf]
+            recovery_capsule.capture(g, cfg, backend)
+            remove = devices if fault == 'capsule-all-missing' else devices[:2]
+            for device in remove:g.write_sysfs(device/'remove', '1')
+            initially_missing = [p.name for p in devices if not p.exists()]
+            if initially_missing != [p.name for p in remove]:
+                raise RuntimeError('Logical removal did not produce the intended missing domain')
+            remap_pending = True
+            if fault == 'capsule-expired':
+                path = pathlib.Path(backend['domain']['capsule'])
+                value = json.loads(path.read_text());value['created_monotonic'] -= 86401
+                path.write_text(json.dumps(value))
+            if fault == 'capsule-parent-changed':
+                # Change the saved bridge identity. New-peer scope expansion
+                # is separately exercised by unit fixtures and storage layout.
+                path = pathlib.Path(backend['domain']['capsule'])
+                value = json.loads(path.read_text());value['bridges'][next(iter(value['bridges']))]['identity']['device'] = '0xffff'
+                path.write_text(json.dumps(value))
         if fault == 'resume':
             # Model an externally restored domain: resume must validate and
             # release persistent holds without posting a reset.
@@ -136,7 +185,7 @@ def main():
             if fault in ('resume', 'reconcile-resume', 'failed-reconciliation'):
                 g.resume(bdfs[0], cfg)
             else:
-                g.recover(g.inspect(bdfs[0]), cfg)
+                g.recover_bdf(bdfs[0], cfg)
         except g.RecoveryError as exc:
             error = str(exc)
         events = [json.loads(line) for line in fixture.EVENTS.read_text().splitlines()]
@@ -147,11 +196,11 @@ def main():
         ledger = json.loads(g.SERVICE_STATE.read_text())['items'] if g.SERVICE_STATE.exists() else {}
         same_boot = boot == native_text('/proc/sys/kernel/random/boot_id')
         storage_unchanged = storage_path.exists() and (storage_path/'config').read_bytes()[:64] == storage_identity
-        success = fault in ('success', 'resume', 'reconcile-resume')
+        success = fault in ('success', 'resume', 'reconcile-resume', 'capsule-missing', 'capsule-all-missing')
         if success:
             passed = (error is None and set(after.values()) == {0} and verified == bdfs
                       and all(services.values()) and not ledger and len(starts) == 9
-                      and len(resets) == (8 if fault == 'success' else 1 if fault == 'reconcile-resume' else 0))
+                      and len(resets) == (8 if fault in ('success','capsule-missing','capsule-all-missing') else 1 if fault == 'reconcile-resume' else 0))
         elif fault == 'storage-scope':
             passed = bool(error) and not resets and before == after and not starts
         else:
@@ -172,9 +221,16 @@ def main():
             'fabric-failed': 'fabric_verified', 'stale-validation': 'nonce',
             'storage-scope': 'unapproved devices or bridges',
             'restart-blocked': 'Unresolved management reset',
-            'failed-reconciliation': 'fabric_verified'}
+            'failed-reconciliation': 'fabric_verified',
+            'capsule-no-independent-control': 'independent_reset_control',
+            'capsule-expired': 'expired', 'capsule-parent-changed': 'parent identity',
+            'capsule-wrong-uuid': 'replacement UUID'}
         if not success:
             passed = passed and expected_errors[fault] in (error or '')
+        if fault in ('capsule-no-independent-control','capsule-expired','capsule-parent-changed'):
+            passed = passed and not resets and before == after
+        if fault == 'capsule-wrong-uuid':
+            passed = passed and len(resets) == 8 and verified == bdfs[:-1]
         if fault in ('fabric-failed', 'stale-validation'):
             passed = passed and verified == bdfs and len(resets) == 8
         if fault == 'workload-failed':
@@ -193,7 +249,7 @@ def main():
         results.append({'fault': fault, 'passed': bool(passed and same_boot and storage_unchanged),
             'error': error, 'reset_posts': len(resets), 'service_starts': len(starts),
             'held_records': len(ledger), 'verified_members': len(verified),
-            'unresolved_operations': pending_operations,
+            'unresolved_operations': pending_operations, 'initially_missing_functions': initially_missing,
             'before': before, 'after': after, 'boot_unchanged': same_boot,
             'storage_unchanged': storage_unchanged})
     server.shutdown()

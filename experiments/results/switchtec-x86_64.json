@@ -312,6 +312,80 @@
         "0000:08:02.0"
       ],
       "boot_unchanged": true
+    },
+    {
+      "fault": "watch-independent-fault",
+      "passed": true,
+      "error": null,
+      "commands": [
+        {
+          "kind": "switch-command",
+          "port": "0",
+          "flag": "SET"
+        },
+        {
+          "kind": "switch-command",
+          "port": "0",
+          "flag": "CLEAR"
+        },
+        {
+          "kind": "switch-command",
+          "port": "1",
+          "flag": "SET"
+        },
+        {
+          "kind": "switch-command",
+          "port": "1",
+          "flag": "CLEAR"
+        },
+        {
+          "kind": "switch-command",
+          "port": "2",
+          "flag": "SET"
+        },
+        {
+          "kind": "switch-command",
+          "port": "2",
+          "flag": "CLEAR"
+        },
+        {
+          "kind": "switch-command",
+          "port": "3",
+          "flag": "SET"
+        },
+        {
+          "kind": "switch-command",
+          "port": "3",
+          "flag": "CLEAR"
+        }
+      ],
+      "verified_members": 8,
+      "service_starts": 9,
+      "pending_operations": 0,
+      "initially_missing_functions": [],
+      "boot_unchanged": true
+    },
+    {
+      "fault": "watch-health-hold",
+      "passed": true,
+      "error": "Independent health refused; whole domain held",
+      "commands": [],
+      "verified_members": 0,
+      "service_starts": 0,
+      "pending_operations": 0,
+      "initially_missing_functions": [],
+      "boot_unchanged": true
+    },
+    {
+      "fault": "watch-health-stale",
+      "passed": true,
+      "error": "Independent health refused; whole domain held",
+      "commands": [],
+      "verified_members": 0,
+      "service_starts": 0,
+      "pending_operations": 0,
+      "initially_missing_functions": [],
+      "boot_unchanged": true
     }
   ],
   "architecture": "x86_64",
@@ -326,14 +400,14 @@
   "qemu_returncode": 0,
   "qemu_version": "QEMU emulator version 10.2.1 (Debian 1:10.2.1+ds-1ubuntu3.2)",
   "inputs_sha256": {
-    "gpu_recovery.py": "e4383b8f9202a9c1684c139961991c15779d54085aa24005dfb9722c34244dfa",
+    "gpu_recovery.py": "c69810ee27458a1f6934b838a6a51e5548bbf28600544bdd6cb882541f19c588",
     "domain_adapter.py": "c76356aa385c78cd948953b52ad6d4d5b27786718a9a29048599ace1d74a7ed4",
     "recovery_capsule.py": "7f42688771e131023856633f5044e7a44a78447ccf80dc9f20c62d54d71b4a30",
     "adapters/switchtec_gpu.py": "3868e09633c0f5d627b3a32c7809a8053ae5b8643d1f4f75d713d5fb2c76774d",
     "adapters/reset_journal.py": "a6c7ea7a9aee9a707df2fa8f5206d786c9fcdecd7989adb0f682360bc3095276",
-    "experiments/qemu/switchtec_guest.py": "667658b8a4dbf7c47a4711f89ed3cb519678a730cf13681cb40cfc5a069f439a",
+    "experiments/qemu/switchtec_guest.py": "9d21195cb9c72362d5620cc18c2d48614acb55e001cf3cc4a582d0b5df7e429c",
     "experiments/qemu/enterprise_fixture.py": "b2f580ce79f40b4834c9db18080a53c7a1cd2e3b422110517019fcfaf9095dae",
-    "experiments/qemu/switchtec_fixture.py": "6fd9dac8c1086eba216a9772d04b177bc65e366fec00069c94b9b7e9bed7ba2e",
+    "experiments/qemu/switchtec_fixture.py": "f1d6953b8ea38b163c8e7c0cd6e5b2cd6bb366906e660111ffe6e2acfd5fdc1a",
     "experiments/qemu/run.py": "889008999cdbde18cbc46bdf2e06783e229945c94289ae6df9f30e8fccdeb6b8",
     "experiments/qemu/run_switchtec.py": "43b5e2bff93607980bf936184d82a112c95d90a3fab581f3930735a96cca0a36"
   },

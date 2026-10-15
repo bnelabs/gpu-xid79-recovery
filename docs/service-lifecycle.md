@@ -109,3 +109,11 @@ polls. A prepared GPU missing from sysfs skips the otherwise unnecessary NVML
 query and enters the same whole-domain hold/budget path. A valid capsule and a
 fresh independent-control receipt are required before any reset or scoped
 rediscovery. Generic recovery without the capsule still refuses missing GPUs.
+
+## Independent domain observation
+
+A qualified explicit domain can opt into [independent health observation](independent-health.md)
+with `domain.health_command`. The watcher then uses fresh nonce-bound whole-domain
+receipts instead of its initial NVML query. Any unresolved peer holds the domain;
+an actionable fault uses existing whole-domain budgets and independent preflight.
+This does not replace physical identity, CUDA or fabric checks after recovery.

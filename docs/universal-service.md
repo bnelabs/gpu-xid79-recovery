@@ -105,3 +105,7 @@ failure. It does not infer a missing physical reset path from a firmware image.
 The [independent-controller engineering contract](independent-recovery-controller.md)
 defines a motherboard-independent hardware direction, an offline qualification
 checker, and the physical evidence still required.
+
+The [enterprise hardware survey](enterprise-hardware-landscape.md) records
+documented configurations and qualification gaps. Hardware names alone do not
+select a reset contract, particularly for CPU-coherent and provider-owned systems.

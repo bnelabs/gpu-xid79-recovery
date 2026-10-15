@@ -1,0 +1,1299 @@
+{
+  "schema": 1,
+  "reviewed_on": "2026-10-15",
+  "purpose": "Research inventory; never a runtime reset allowlist",
+  "semantics": {
+    "gpu_options": "Alternative homogeneous configurations, not permission to mix GPUs.",
+    "cpu_options": "Published options only; NOT a Cartesian product with GPUs. Apply notes and OEM QVL.",
+    "recovery_class": "Engineering classification for investigation, not a proven reset domain.",
+    "null": "Unknown/unqualified, never wildcard compatibility.",
+    "configuration_status": "Documentation evidence, not availability, support lifetime or physical recovery proof."
+  },
+  "sources": {
+    "dgx1": "https://docs.nvidia.com/dgx/archives/dgx1-user-guide/introduction-to-dgx1.html",
+    "dgxa100": "https://docs.nvidia.com/dgx/dgxa100-user-guide/introduction-to-dgxa100.html",
+    "stationa100": "https://docs.nvidia.com/dgx/dgx-station-a100-user-guide/hardware-specifications-station-a100.html",
+    "dgxh": "https://docs.nvidia.com/dgx/dgxh100-user-guide/introduction-to-dgxh100.html",
+    "dgxb200": "https://docs.nvidia.com/dgx/dgxb200-user-guide/introduction-to-dgxb200.html",
+    "dgxb300": "https://docs.nvidia.com/dgx/dgxb300-user-guide/introduction-to-dgxb300.html",
+    "grace": "https://docs.nvidia.com/dccpu/grace-perf-tuning-guide/index.html",
+    "gb": "https://docs.nvidia.com/dgx/dgxgb200-user-guide/hardware.html",
+    "c2c": "https://www.nvidia.com/en-us/data-center/nvlink-c2c/",
+    "rubin": "https://docs.nvidia.com/dgx/dgxvr-user-guide/hardware.html",
+    "rubinx86": "https://newsroom.intel.com/data-center/intel-xeon-6-used-as-host-cpus-in-nvidia-dgx-rubin-nvl8-systems",
+    "stationgb": "https://docs.nvidia.com/dgx/dgx-station-development-guide/porting/software-requirements.html",
+    "ibmac": "https://www.redbooks.ibm.com/abstracts/redp5494.html",
+    "ibmic": "https://www.redbooks.ibm.com/abstracts/redp5584.html",
+    "dell9680": "https://www.dell.com/support/manuals/en-us/poweredge-xe9680/xe9680_ism_pub/dell-poweredge-xe9680-system-configurations-and-features?guid=guid-219a12b6-5232-49fe-9506-ac2aed25ac30&lang=en-us",
+    "dellportfolio": "https://www.dell.com/en-us/shop/servers/sf/poweredge-datacenter-servers?hve=explore+poweredge-cloud-scale-servers",
+    "dell9785": "https://www.dell.com/support/manuals/en-us/poweredge-xe9785/xe9785_ism/thermal-restriction-matrix?guid=guid-51aaf63a-9010-4987-9104-fa5965cb55c9&lang=en-us",
+    "lenovob200": "https://lenovopress.lenovo.com/lp2247-thinksystem-sr680a-v3-with-b200",
+    "lenovo675": "https://lenovopress.lenovo.com/lp1611-thinksystem-sr675-v3-server",
+    "hpe685": "https://buy.hpe.com/us/en/compute/rack-servers/proliant-compute-xd600-servers/hpe-proliant-compute-xd685/p/1014862906",
+    "hpeconfig": "https://www.hpe.com/kr/ko/collaterals/collateral.a00073553enw.html",
+    "hpe690": "https://www.hpe.com/sg/en/products/compute/ai-servers.html",
+    "supermicro": "https://www.supermicro.com/en/support/manuals/product/system/as-8126gs-nb3rt/Content/appendix/system-specifications-as-8126gs-nb3rt.htm",
+    "supermicrogpu": "https://store.supermicro.com/us_en/8u-gpu-superserver-as-8126gs-nb3rt.html?options=cart",
+    "cisco": "https://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/c/hw/c885A/install/b_c885a-m8-server-hig/m_overview.html",
+    "asus": "https://servers.asus.com/products/Servers/GPU-Servers/ESC-N8-E11/",
+    "asusbios": "https://www.asus.com/networking-iot-servers/servers/gpu-servers/esc-n8-e11/helpdesk_cpu/?model2Name=ESC-N8-E11",
+    "gigabytex86": "https://download.gigabyte.com/FileList/DataSheet/G593-SD0-AAX1_datasheet_v1.2.pdf",
+    "gigabytearm": "https://www.gigabyte.com/FileUpload/Global/WebPage/1052/2025_1H_Server_Brochure_ARM.pdf",
+    "gigabyteqvl": "https://download.gigabyte.com/FileList/QVL/server_qvl_G242-P33.pdf",
+    "aws": "https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html",
+    "azurea100": "https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/nd-family",
+    "azureh100": "https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ndh100v5-series",
+    "gcp": "https://docs.cloud.google.com/compute/docs/gpus",
+    "certified": "https://docs.nvidia.com/certification-programs/latest/nvidia-certified-systems.html",
+    "previous": "https://docs.nvidia.com/certification-programs/latest/nvidia-certified-systems-previous-generation.html",
+    "vera": "https://www.nvidia.com/en-us/data-center/vera-cpu/",
+    "gigabytearmproduct": "https://www.gigabyte.com/eu/Enterprise/GPU-Server/G242-P33-rev-100",
+    "gcpcpu": "https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines"
+  },
+  "platforms": [
+    {
+      "id": "dgx1-v100",
+      "vendor": "NVIDIA",
+      "system": "DGX-1",
+      "gpu_options": [
+        "V100 SXM2"
+      ],
+      "cpu_options": [
+        "2x Xeon E5-2698 v4"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvlink_peer_group",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "historical_documented",
+      "notes": "Historical platform; no NVSwitch in its cube-mesh topology.",
+      "source_refs": [
+        "dgx1"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "dgxa100",
+      "vendor": "NVIDIA",
+      "system": "DGX A100",
+      "gpu_options": [
+        "A100 40GB",
+        "A100 80GB"
+      ],
+      "cpu_options": [
+        "2x EPYC 7742"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Homogeneous 320GB or 640GB GPU-memory configurations.",
+      "source_refs": [
+        "dgxa100"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "stationa100",
+      "vendor": "NVIDIA",
+      "system": "DGX Station A100",
+      "gpu_options": [
+        "A100"
+      ],
+      "cpu_options": [
+        "EPYC 7742"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvlink_peer_group",
+      "gpu_count": 4,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Dedicated station configuration, not generic PCIe-card support.",
+      "source_refs": [
+        "stationa100"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "dgxh100",
+      "vendor": "NVIDIA",
+      "system": "DGX H100",
+      "gpu_options": [
+        "H100"
+      ],
+      "cpu_options": [
+        "2x Xeon 8480C"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "dgxh"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "dgxh200",
+      "vendor": "NVIDIA",
+      "system": "DGX H200",
+      "gpu_options": [
+        "H200"
+      ],
+      "cpu_options": [
+        "2x Xeon 8480C"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "dgxh"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "dgxb200",
+      "vendor": "NVIDIA",
+      "system": "DGX B200",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "2x Xeon 8570"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "dgxb200"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "dgxb300",
+      "vendor": "NVIDIA",
+      "system": "DGX B300",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "2x Xeon 6776P"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "AC and DC/busbar variants; NIC-to-GPU PCIe path differs from CPU path.",
+      "source_refs": [
+        "dgxb300"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gh200",
+      "vendor": "NVIDIA",
+      "system": "GH200 Superchip",
+      "gpu_options": [
+        "Hopper GPU"
+      ],
+      "cpu_options": [
+        "Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "cpu_gpu_coherent",
+      "gpu_count": 1,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "grace"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gh200-nvl2",
+      "vendor": "NVIDIA",
+      "system": "GH200 NVL2",
+      "gpu_options": [
+        "Hopper GPU"
+      ],
+      "cpu_options": [
+        "2x Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "cpu_gpu_coherent",
+      "gpu_count": 2,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "grace"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gb200-nvl72",
+      "vendor": "NVIDIA",
+      "system": "DGX GB200 NVL72",
+      "gpu_options": [
+        "GB200 platform Blackwell GPU"
+      ],
+      "cpu_options": [
+        "36x Grace per rack"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "coherent_rack",
+      "gpu_count": 72,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "18 compute trays, each with 2 CPUs and 4 GPUs; rack count is not reset scope.",
+      "source_refs": [
+        "gb",
+        "c2c"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gb300-nvl72",
+      "vendor": "NVIDIA",
+      "system": "DGX GB300 NVL72",
+      "gpu_options": [
+        "GB300 platform Blackwell GPU"
+      ],
+      "cpu_options": [
+        "36x Grace per rack"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "coherent_rack",
+      "gpu_count": 72,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "18 compute trays, each with 2 CPUs and 4 GPUs; rack count is not reset scope.",
+      "source_refs": [
+        "gb",
+        "c2c"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "rubin-nvl72",
+      "vendor": "NVIDIA",
+      "system": "DGX Vera Rubin NVL72",
+      "gpu_options": [
+        "Rubin"
+      ],
+      "cpu_options": [
+        "36x Vera per rack"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "coherent_rack",
+      "gpu_count": 72,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "published_platform_design",
+      "notes": "Published hardware guide; no availability or reset qualification inferred.",
+      "source_refs": [
+        "rubin",
+        "c2c",
+        "vera"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "rubin-nvl8",
+      "vendor": "NVIDIA",
+      "system": "DGX Rubin NVL8",
+      "gpu_options": [
+        "Rubin"
+      ],
+      "cpu_options": [
+        "Xeon 6"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "new_platform_unqualified",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "announcement",
+      "notes": "Announcement confirms CPU pairing; no reset sequence or shipping status inferred.",
+      "source_refs": [
+        "rubinx86"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "station-gb300",
+      "vendor": "NVIDIA",
+      "system": "DGX Station GB300",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "cpu_gpu_coherent",
+      "gpu_count": 1,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "stationgb"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "ibm-ac922",
+      "vendor": "IBM",
+      "system": "Power AC922",
+      "gpu_options": [
+        "V100 SXM2"
+      ],
+      "cpu_options": [
+        "2x POWER9"
+      ],
+      "cpu_architecture": "ppc64le",
+      "recovery_class": "cpu_gpu_coherent",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "historical_documented",
+      "notes": "Up to six GPUs; CPU/GPU NVLink coherence requires POWER-specific lifecycle.",
+      "source_refs": [
+        "ibmac"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "ibm-ic922",
+      "vendor": "IBM",
+      "system": "Power IC922",
+      "gpu_options": [
+        "T4"
+      ],
+      "cpu_options": [
+        "2x POWER9"
+      ],
+      "cpu_architecture": "ppc64le",
+      "recovery_class": "pcie_endpoint",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "historical_documented",
+      "notes": "Up to six; this is not the AC922 V100 coherent topology.",
+      "source_refs": [
+        "ibmic"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9680-a100",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9680",
+      "gpu_options": [
+        "A100 HGX"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen4 or Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Generation-specific GPU baseboard; options are not interchangeable modules.",
+      "source_refs": [
+        "dell9680"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9680-h100",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9680",
+      "gpu_options": [
+        "H100 HGX"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen4 or Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Generation-specific GPU baseboard; options are not interchangeable modules.",
+      "source_refs": [
+        "dell9680"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9680-h200",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9680",
+      "gpu_options": [
+        "H200 HGX"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen4 or Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Generation-specific GPU baseboard; options are not interchangeable modules.",
+      "source_refs": [
+        "dell9680"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9780",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9780",
+      "gpu_options": [
+        "HGX B200",
+        "HGX B300"
+      ],
+      "cpu_options": [
+        "2x Xeon 6 6700P"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Exact configuration and firmware need service-tag-specific confirmation.",
+      "source_refs": [
+        "dellportfolio"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9785",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9785",
+      "gpu_options": [
+        "HGX B300"
+      ],
+      "cpu_options": [
+        "2x EPYC 9005"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Thermal/CPU options constrained by OEM matrix.",
+      "source_refs": [
+        "dell9785"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe8712",
+      "vendor": "Dell",
+      "system": "PowerEdge XE8712 GB200 NVL4",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "2x Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "cpu_gpu_coherent",
+      "gpu_count": 4,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "dellportfolio"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xe9712",
+      "vendor": "Dell",
+      "system": "PowerEdge XE9712 GB300 NVL72",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "36x Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "coherent_rack",
+      "gpu_count": 72,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "dellportfolio"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "sr680a-b200",
+      "vendor": "Lenovo",
+      "system": "ThinkSystem SR680a V3 with B200",
+      "gpu_options": [
+        "HGX B200 SXM6"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Separate B200 product guide; no generic SR680a upgrade compatibility inferred.",
+      "source_refs": [
+        "lenovob200"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "sr675-pcie",
+      "vendor": "Lenovo",
+      "system": "ThinkSystem SR675 V3 PCIe shuttle",
+      "gpu_options": [
+        "H200 NVL",
+        "L40S",
+        "RTX PRO 6000 Blackwell Server Edition"
+      ],
+      "cpu_options": [
+        "2x EPYC 9004 or 9005"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "pcie_endpoint",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "GPU, fan and CPU constraints apply. H200/RTX PRO field upgrades require Turin and specified high-performance fans. NVLink bridges expand domain. All installed GPUs identical.",
+      "source_refs": [
+        "lenovo675"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "sr675-hgx",
+      "vendor": "Lenovo",
+      "system": "ThinkSystem SR675 V3 SXM shuttle",
+      "gpu_options": [
+        "HGX H200"
+      ],
+      "cpu_options": [
+        "EPYC platform; exact CPU option check required"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 4,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "historical_documented",
+      "notes": "Historical/withdrawn options retained in change history; not a current availability claim.",
+      "source_refs": [
+        "lenovo675"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xd685-h200",
+      "vendor": "HPE",
+      "system": "ProLiant Compute XD685",
+      "gpu_options": [
+        "H200"
+      ],
+      "cpu_options": [
+        "2x EPYC Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "H200 air/DLC; B200 DLC chassis S4R96A; B300 high-power DLC chassis S6Y07A. Match cooling/power kits.",
+      "source_refs": [
+        "hpe685",
+        "hpeconfig"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xd685-b200",
+      "vendor": "HPE",
+      "system": "ProLiant Compute XD685",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "2x EPYC Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "H200 air/DLC; B200 DLC chassis S4R96A; B300 high-power DLC chassis S6Y07A. Match cooling/power kits.",
+      "source_refs": [
+        "hpe685",
+        "hpeconfig"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xd685-b300",
+      "vendor": "HPE",
+      "system": "ProLiant Compute XD685",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "2x EPYC Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "H200 air/DLC; B200 DLC chassis S4R96A; B300 high-power DLC chassis S6Y07A. Match cooling/power kits.",
+      "source_refs": [
+        "hpe685",
+        "hpeconfig"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "xd690",
+      "vendor": "HPE",
+      "system": "Compute XD690",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "2x Xeon 6"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Air-cooled 10U.",
+      "source_refs": [
+        "hpe690"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "as8126-b300",
+      "vendor": "Supermicro",
+      "system": "AS-8126GS-NB3RT",
+      "gpu_options": [
+        "HGX B300"
+      ],
+      "cpu_options": [
+        "2x EPYC 9004 or 9005"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": "H14DSG-OM",
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Confirm CPU choice against exact current SKU; some product tables differ in allowed series.",
+      "source_refs": [
+        "supermicro",
+        "supermicrogpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "c885a",
+      "vendor": "Cisco",
+      "system": "UCS C885A M8 H models",
+      "gpu_options": [
+        "HGX H100",
+        "HGX H200"
+      ],
+      "cpu_options": [
+        "2x EPYC 9004 or 9005"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "H-model SKUs only; M-model AMD accelerators are separate configurations.",
+      "source_refs": [
+        "cisco"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "esc-n8",
+      "vendor": "ASUS",
+      "system": "ESC N8-E11 / E11V",
+      "gpu_options": [
+        "HGX H100",
+        "HGX H200"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "CPU support page also lists specific Gen4 CPUs with BIOS 0303 GO; do not generalize that BIOS floor to all GPU configurations.",
+      "source_refs": [
+        "asus",
+        "asusbios"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "g593",
+      "vendor": "GIGABYTE",
+      "system": "G593-SD0-AAX1",
+      "gpu_options": [
+        "HGX H100 SXM5"
+      ],
+      "cpu_options": [
+        "2x Xeon Scalable Gen4 or Gen5",
+        "Xeon CPU Max options per QVL"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "nvswitch_node",
+      "gpu_count": 8,
+      "board": "MSB3-G40",
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "",
+      "source_refs": [
+        "gigabytex86"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "g242-arm",
+      "vendor": "GIGABYTE",
+      "system": "G242-P33",
+      "gpu_options": [
+        "H100 PCIe",
+        "A100 PCIe"
+      ],
+      "cpu_options": [
+        "Ampere Altra family"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "pcie_endpoint",
+      "gpu_count": null,
+      "board": "MP32-AR2",
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "vendor_documented",
+      "notes": "Product Rev.100 lists up to four H100 PCIe. A100 QVL excludes Altra Max. QVL incorrectly labels H100 as Ampere; retain actual GPU generation. Verify exact SKU, CPU and GPU limits together.",
+      "source_refs": [
+        "gigabytearm",
+        "gigabyteqvl",
+        "gigabytearmproduct"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p4d.24xlarge",
+      "vendor": "AWS",
+      "system": "p4d.24xlarge",
+      "gpu_options": [
+        "A100 40GB"
+      ],
+      "cpu_options": [
+        "Xeon 8275CL"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p4de.24xlarge",
+      "vendor": "AWS",
+      "system": "p4de.24xlarge",
+      "gpu_options": [
+        "A100 80GB"
+      ],
+      "cpu_options": [
+        "Xeon 8275CL"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p5.48xlarge",
+      "vendor": "AWS",
+      "system": "p5.48xlarge",
+      "gpu_options": [
+        "H100"
+      ],
+      "cpu_options": [
+        "EPYC 7R13"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p5e.48xlarge",
+      "vendor": "AWS",
+      "system": "p5e.48xlarge",
+      "gpu_options": [
+        "H200"
+      ],
+      "cpu_options": [
+        "EPYC 7R13"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p5en.48xlarge",
+      "vendor": "AWS",
+      "system": "p5en.48xlarge",
+      "gpu_options": [
+        "H200"
+      ],
+      "cpu_options": [
+        "Xeon Sapphire Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p6e-gb200.36xlarge",
+      "vendor": "AWS",
+      "system": "p6e-gb200.36xlarge",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 4,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "azure-nda100",
+      "vendor": "Microsoft Azure",
+      "system": "ND A100 v4",
+      "gpu_options": [
+        "A100"
+      ],
+      "cpu_options": [
+        "EPYC 7V12"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Physical board/firmware and host reset authority are not specified here.",
+      "source_refs": [
+        "azurea100"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "azure-ndh100",
+      "vendor": "Microsoft Azure",
+      "system": "ND H100 v5",
+      "gpu_options": [
+        "H100"
+      ],
+      "cpu_options": [
+        "Xeon Sapphire Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Guest has NVLink; that does not establish host reset permissions.",
+      "source_refs": [
+        "azureh100"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a2",
+      "vendor": "Google Cloud",
+      "system": "A2",
+      "gpu_options": [
+        "A100"
+      ],
+      "cpu_options": [
+        "Xeon Cascade Lake"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a3-high-mega",
+      "vendor": "Google Cloud",
+      "system": "A3 High/Mega",
+      "gpu_options": [
+        "H100"
+      ],
+      "cpu_options": [
+        "Xeon Sapphire Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a3-ultra",
+      "vendor": "Google Cloud",
+      "system": "A3 Ultra",
+      "gpu_options": [
+        "H200"
+      ],
+      "cpu_options": [
+        "Xeon Emerald Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a4",
+      "vendor": "Google Cloud",
+      "system": "A4",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "Xeon Emerald Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a4x",
+      "vendor": "Google Cloud",
+      "system": "A4X",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "2x Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "CPU not inferred when omitted from reviewed GPU source; physical firmware/reset ownership unqualified.",
+      "source_refs": [
+        "gcp"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-a4x-max",
+      "vendor": "Google Cloud",
+      "system": "A4X Max",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "2x Grace"
+      ],
+      "cpu_architecture": "aarch64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "CPU not inferred when omitted from reviewed GPU source; physical firmware/reset ownership unqualified.",
+      "source_refs": [
+        "gcp"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-g2",
+      "vendor": "Google Cloud",
+      "system": "G2",
+      "gpu_options": [
+        "L4"
+      ],
+      "cpu_options": [
+        "Xeon Cascade Lake"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "gcp-g4",
+      "vendor": "Google Cloud",
+      "system": "G4",
+      "gpu_options": [
+        "RTX PRO 6000"
+      ],
+      "cpu_options": [
+        "EPYC Turin Gen5"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": null,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published CPU/GPU pairing; physical motherboard, firmware and reset ownership remain unqualified.",
+      "source_refs": [
+        "gcp",
+        "gcpcpu"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p6-b200.48xlarge",
+      "vendor": "AWS",
+      "system": "p6-b200.48xlarge",
+      "gpu_options": [
+        "B200"
+      ],
+      "cpu_options": [
+        "Xeon Emerald Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    },
+    {
+      "id": "aws-p6-b300.48xlarge",
+      "vendor": "AWS",
+      "system": "p6-b300.48xlarge",
+      "gpu_options": [
+        "B300"
+      ],
+      "cpu_options": [
+        "Xeon Emerald Rapids"
+      ],
+      "cpu_architecture": "x86_64",
+      "recovery_class": "provider_owned",
+      "gpu_count": 8,
+      "board": null,
+      "required_bios": null,
+      "required_management_firmware": null,
+      "configuration_status": "provider_documented",
+      "notes": "Published instance specification; no motherboard, host firmware or BMC access inferred.",
+      "source_refs": [
+        "aws"
+      ],
+      "physical_recovery_qualified": false
+    }
+  ]
+}

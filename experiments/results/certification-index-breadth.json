@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "retrieved_utc": "2026-10-15T20:22:09.630942+00:00",
+  "sources": [
+    {
+      "url": "https://docs.nvidia.com/certification-programs/latest/nvidia-certified-systems.html",
+      "html_sha256": "7704086f4984d21634814f6b75146ee278bc0863d3848d476d501270d4000f25",
+      "tables": [
+        {
+          "table_index": 0,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 1
+        },
+        {
+          "table_index": 1,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 14
+        },
+        {
+          "table_index": 2,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 30
+        },
+        {
+          "table_index": 3,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 30
+        },
+        {
+          "table_index": 4,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 5
+        },
+        {
+          "table_index": 5,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 11
+        },
+        {
+          "table_index": 6,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 4,
+          "published_rows": 2
+        },
+        {
+          "table_index": 7,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 4,
+          "published_rows": 2
+        },
+        {
+          "table_index": 8,
+          "category": "data_center_general",
+          "column_count": 3,
+          "published_rows": 317
+        },
+        {
+          "table_index": 9,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 3,
+          "published_rows": 7
+        },
+        {
+          "table_index": 10,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 3,
+          "published_rows": 1
+        },
+        {
+          "table_index": 11,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 4,
+          "published_rows": 7
+        },
+        {
+          "table_index": 12,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 4,
+          "published_rows": 87
+        },
+        {
+          "table_index": 13,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 3,
+          "published_rows": 9
+        },
+        {
+          "table_index": 14,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 3,
+          "published_rows": 45
+        },
+        {
+          "table_index": 15,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 5,
+          "published_rows": 166
+        },
+        {
+          "table_index": 16,
+          "category": "other_certification_or_reference_configuration",
+          "column_count": 3,
+          "published_rows": 8
+        }
+      ],
+      "partner_labels": 62,
+      "published_rows": 742
+    },
+    {
+      "url": "https://docs.nvidia.com/certification-programs/latest/nvidia-certified-systems-previous-generation.html",
+      "html_sha256": "efe10dc5cab7df36e41777cc001b02b016dfe80f1f6f4dc3ebc7f16fc5437b0c",
+      "tables": [
+        {
+          "table_index": 0,
+          "category": "data_center_general",
+          "column_count": 3,
+          "published_rows": 199
+        }
+      ],
+      "partner_labels": 38,
+      "published_rows": 199
+    }
+  ],
+  "recovery_qualified": false,
+  "limitations": [
+    "Rows overlap between certification categories; not unique systems or valid CPU/GPU combinations",
+    "Counts include workstation, edge, VDI and reference configuration categories",
+    "No GPU resets, BIOS combinations or actual machine state validated"
+  ]
+}

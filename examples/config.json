@@ -2,5 +2,8 @@
   "watch_gpus": [],
   "services": [],
   "cuda_validation": true,
-  "backends": {}
+  "backends": {},
+  "gpu_services": {},
+  "expected_gpu_uuids": {},
+  "watch_health_interval": 15
 }

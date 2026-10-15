@@ -1,0 +1,26 @@
+{
+  "watch_gpus": [
+    "0000:41:00.0",
+    "0000:81:00.0"
+  ],
+  "services": [
+    {
+      "unit": "inference-router.service"
+    }
+  ],
+  "gpu_services": {
+    "0000:41:00.0": [
+      {
+        "unit": "gpu-worker@0.service"
+      }
+    ],
+    "0000:81:00.0": [
+      {
+        "unit": "gpu-worker@1.service"
+      }
+    ]
+  },
+  "watch_health_interval": 15,
+  "cuda_validation": true,
+  "backends": {}
+}

@@ -2,16 +2,18 @@
 """Discover and recover NVIDIA GPUs using host-exposed reset capabilities."""
 import argparse, collections, csv, dataclasses, fcntl, hashlib, json, os, pathlib, pwd, re, signal, subprocess, sys, time
 import xml.etree.ElementTree as ET
-import shutil, tempfile
+import shutil, tempfile, queue, threading
 
 BDF = re.compile(r'[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]')
 SYSFS = pathlib.Path('/sys/bus/pci/devices')
 ORPHANS = []
 PROFILE_DIR = pathlib.Path('/etc/gpu-recovery/profiles.d')
 DMI = pathlib.Path('/sys/class/dmi/id')
+SERVICE_STATE = pathlib.Path('/var/lib/gpu-recovery-generic/services.json')
 
 class RecoveryError(RuntimeError): pass
 class CommandTimeout(RecoveryError): pass
+class IdentityMismatch(RecoveryError): pass
 
 @dataclasses.dataclass
 class Target:
@@ -604,8 +606,20 @@ def plan(target,cfg):
                 backend=backend_for(target,cfg),
                 limits='No arbitrary GPIO/firmware writes, global module unload, reboot, or reset of other slots')
 
+def service_items(cfg,bdf):
+    items=cfg.get('services',[])+cfg.get('gpu_services',{}).get(bdf,[])
+    result=[]
+    for item in items:
+        if not isinstance(item,dict) or set(item)-{'unit','user'} or 'unit' not in item:
+            raise RecoveryError('Service entries require unit and optional user only')
+        if item not in result:result.append(item)
+    return result
+
 class Services:
-    def __init__(self,items): self.items=items;self.stopped=[]
+    def __init__(self,items,gpu=None,state_path=None):
+        self.items=items;self.gpu=gpu;self.path=state_path or SERVICE_STATE;self.stopped=[]
+        if items and (not isinstance(gpu,str) or not BDF.fullmatch(gpu)):
+            raise RecoveryError('Service holds require a GPU PCI identity')
     def command(self,item,verb):
         unit=item['unit']
         if not re.fullmatch(r'[A-Za-z0-9_.@:\\-]+\.service',unit): raise RecoveryError('Invalid service unit')
@@ -614,21 +628,63 @@ class Services:
         return ['/usr/sbin/runuser','-u',user.pw_name,'--','/usr/bin/env',
                 f'XDG_RUNTIME_DIR=/run/user/{uid}',f'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{uid}/bus',
                 '/usr/bin/systemctl','--user',verb,unit]
+    def _load(self):
+        self.path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+        trusted_file(self.path.parent)
+        if not self.path.exists():return {'version':1,'items':{}}
+        trusted_file(self.path)
+        value=json.loads(self.path.read_text())
+        if value.get('version')!=1 or not isinstance(value.get('items'),dict):
+            raise RecoveryError('Invalid service hold ledger')
+        return value
+    def _save(self,value):
+        # Directory is exclusively root-managed before this atomic replacement.
+        descriptor,name=tempfile.mkstemp(prefix='.services-',dir=self.path.parent)
+        try:
+            with os.fdopen(descriptor,'w') as stream:json.dump(value,stream);stream.flush();os.fsync(stream.fileno())
+            os.replace(name,self.path)
+        finally:
+            if os.path.exists(name):os.unlink(name)
+    def _lock(self):
+        self.path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+        trusted_file(self.path.parent)
+        handle=(self.path.parent/'services.lock').open('a')
+        fcntl.flock(handle,fcntl.LOCK_EX);return handle
     def stop(self):
-        for item in self.items:
-            active,_=run(self.command(item,'is-active'))
-            if active==0:
+        if not self.items:return
+        with self._lock():
+            state=self._load()
+            for item in self.items:
+                argv=self.command(item,'stop')  # Validate before recording.
+                key=json.dumps(item,sort_keys=True)
+                active,out=run(self.command(item,'is-active'))
+                wanted=active==0 or out.strip() in ('activating','reloading')
+                record=state['items'].get(key)
+                if not record and not wanted:continue
+                if not record:record={'service':item,'blocked_by':[]}
+                if self.gpu not in record['blocked_by']:record['blocked_by'].append(self.gpu)
+                state['items'][key]=record;self._save(state)
                 self.stopped.append(item)
-                rc,out=run(self.command(item,'stop'),30)
-                if rc: raise RecoveryError(f'Could not drain {item}: {out}')
+                rc,out=run(argv,90)
+                if rc:raise RecoveryError(f'Could not drain {item}: {out}')
     def restore(self):
+        if not self.items:return
         errors=[]
-        for item in reversed(self.stopped):
-            try:
-                rc,out=run(self.command(item,'start'),30)
-                if rc: errors.append(f'{item}: {out}')
-            except RecoveryError as e: errors.append(str(e))
-        if errors: raise RecoveryError('Service restore failed: '+'; '.join(errors))
+        with self._lock():
+            state=self._load()
+            for item in reversed(self.items):
+                key=json.dumps(item,sort_keys=True);record=state['items'].get(key)
+                if not record or self.gpu not in record['blocked_by']:continue
+                remaining=[gpu for gpu in record['blocked_by'] if gpu!=self.gpu]
+                if remaining:
+                    record['blocked_by']=remaining;self._save(state);continue
+                try:
+                    rc,out=run(self.command(item,'start'),90)
+                    if rc:raise RecoveryError(out)
+                    del state['items'][key];self._save(state)
+                except RecoveryError as error:errors.append(f'{item}: {error}')
+        if errors:raise RecoveryError('Service restore failed: '+'; '.join(errors))
+
 
 def verify(target,cfg):
     rc,out=run(['/usr/bin/nvidia-smi','-i',target.bdf,'--query-gpu=uuid,pci.bus_id,name','--format=csv,noheader'])
@@ -636,6 +692,8 @@ def verify(target,cfg):
     rows=list(csv.reader(out.splitlines(),skipinitialspace=True))
     if len(rows)!=1 or len(rows[0])!=3: raise RecoveryError('Ambiguous NVML target identity')
     uuid,bus,name=rows[0]
+    expected=cfg.get('expected_gpu_uuids',{}).get(target.bdf)
+    if expected and uuid!=expected:raise RecoveryError('GPU UUID changed; refusing workload validation and service restoration')
     domain,tail=bus.split(':',1)
     if f'{int(domain,16):04x}:{tail.lower()}'!=target.bdf: raise RecoveryError('NVML returned the wrong GPU')
     validation=cfg.get('validation_command')
@@ -742,7 +800,8 @@ def recover(target,cfg,backend_only=False):
         raise RecoveryError('Unknown/shared PCI reset scope; lifecycle backend refused')
     lock=open('/run/gpu-recovery-orchestrator.lock','w')
     fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    services=Services(cfg.get('services',[]));boot=text('/proc/sys/kernel/random/boot_id')
+    services=Services(service_items(cfg,target.bdf),target.bdf);boot=text('/proc/sys/kernel/random/boot_id')
+    verified=False
     try:
         services.stop()
         if not backend_only and not (backend and backend.get('prefer_backend')):
@@ -759,7 +818,7 @@ def recover(target,cfg,backend_only=False):
             argv=['/usr/bin/nvidia-smi','--gpu-reset']+(['bus'] if bus_reset else [])+['-i',target.bdf]
             rc,out=run(argv,30)
             if rc==0:
-                log(out);verify(target,cfg);return
+                log(out);verify(target,cfg);verified=True;return
             log(f'Targeted NVML reset unavailable: {out}')
             if re.search(r'\bin use\b|active process|currently being used',out,re.I):
                 raise RecoveryError('NVML reports active users; refusing to bypass its client protection')
@@ -775,48 +834,157 @@ def recover(target,cfg,backend_only=False):
         else:
             kernel_fallback_allowed(report,len(discover()))
             detached_reset(target,cfg)
-        verify(target,cfg)
+        verify(target,cfg);verified=True
     finally:
-        services.restore()
         if text('/proc/sys/kernel/random/boot_id')!=boot: raise RecoveryError('Boot ID changed unexpectedly')
+        if verified:services.restore()
+        else:log('Recovery not verified; configured services remain held')
 
 def xid_bdf(message):
     match=re.search(r'Xid\s*\(PCI:([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})(?:\.[0-7])?\):\s*79\b',message,re.I)
     return match[1].lower()+'.0' if match else None
 
+def nvml_identity(bdf):
+    rc,out=run(['/usr/bin/nvidia-smi','-i',bdf,'--query-gpu=uuid,pci.bus_id','--format=csv,noheader'],10)
+    if rc:raise RecoveryError('GPU health query failed: '+out)
+    rows=list(csv.reader(out.splitlines(),skipinitialspace=True))
+    if len(rows)!=1 or len(rows[0])!=2:raise IdentityMismatch('Ambiguous GPU health response')
+    uuid,bus=rows[0]
+    try:
+        domain,tail=bus.split(':',1)
+        normalized=f'{int(domain,16):04x}:{tail.lower()}'
+    except ValueError:raise IdentityMismatch('Malformed GPU health PCI identity')
+    if normalized!=bdf or not re.fullmatch(r'GPU-[0-9a-fA-F-]{36}',uuid):
+        raise IdentityMismatch('GPU health identity mismatch')
+    return uuid
+
+
+def resume(bdf,cfg):
+    if os.geteuid():raise RecoveryError('Service restoration requires root')
+    target=inspect(bdf)
+    with open('/run/gpu-recovery-orchestrator.lock','w') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        effective=discovered_config(explore(target,cfg),cfg)
+        verify(target,effective)
+        Services(service_items(effective,bdf),bdf).restore()
+
+
+class Watcher:
+    def __init__(self,cfg,budget_path=None):
+        self.cfg=dict(cfg);self.identities=dict(cfg.get('expected_gpu_uuids',{}))
+        self.cfg['expected_gpu_uuids']=self.identities
+        self.failed=set();self.last_end={};self.attempts=collections.defaultdict(collections.deque)
+        self.path=budget_path or SERVICE_STATE.with_name('watch-budget.json')
+        self.boot=text('/proc/sys/kernel/random/boot_id')
+        self.path.parent.mkdir(mode=0o700,parents=True,exist_ok=True);trusted_file(self.path.parent)
+        if self.path.exists():
+            trusted_file(self.path);saved=json.loads(self.path.read_text())
+            if saved.get('boot_id')==self.boot:
+                for bdf,uuid in saved.get('identities',{}).items():
+                    if not BDF.fullmatch(bdf) or not isinstance(uuid,str) or not re.fullmatch(r'GPU-[0-9a-fA-F-]{36}',uuid):raise RecoveryError('Invalid saved GPU identity')
+                    self.identities.setdefault(bdf,uuid)
+                for bdf,values in saved['attempts'].items():
+                    if not BDF.fullmatch(bdf) or not isinstance(values,list) or any(not isinstance(v,(int,float)) for v in values):
+                        raise RecoveryError('Invalid watcher budget')
+                    self.attempts[bdf]=collections.deque(values)
+    def save_budget(self):
+        descriptor,name=tempfile.mkstemp(prefix='.watch-',dir=self.path.parent)
+        try:
+            with os.fdopen(descriptor,'w') as stream:
+                json.dump({'boot_id':self.boot,'identities':self.identities,'attempts':{bdf:list(values) for bdf,values in self.attempts.items()}},stream)
+                stream.flush();os.fsync(stream.fileno())
+            os.replace(name,self.path)
+        finally:
+            if os.path.exists(name):os.unlink(name)
+    def hold(self,bdf):
+        try:Services(service_items(self.cfg,bdf),bdf).stop();return True
+        except Exception as error:
+            self.failed.add(bdf);log(f'{bdf}: cannot hold configured services: {error}');return False
+    def check(self,bdf,event=False,event_time=None):
+        try:
+            uuid=nvml_identity(bdf)
+            if bdf in self.identities and self.identities[bdf]!=uuid:
+                self.hold(bdf);self.failed.add(bdf)
+                log(f'{bdf}: UUID changed; services held, recovery refused');return
+            if bdf not in self.identities:
+                self.identities[bdf]=uuid;self.save_budget()
+            if not event or event_time is not None and event_time<=self.last_end.get(bdf,0):return
+        except IdentityMismatch as error:
+            self.hold(bdf);self.failed.add(bdf)
+            log(f'{bdf}: untrusted health identity; no reset attempted: {error}');return
+        except (CommandTimeout,OSError) as error:
+            self.hold(bdf);self.failed.add(bdf)
+            log(f'{bdf}: blocked/unavailable health command; no reset attempted: {error}');return
+        except RecoveryError:pass
+        if not self.hold(bdf):return
+        now=time.monotonic();history=self.attempts[bdf]
+        while history and now-history[0]>=3600:history.popleft()
+        if bdf in self.failed or len(history)>=3:
+            log(f'{bdf}: recovery suppressed; configured services remain held');return
+        history.append(now);self.save_budget()
+        try:recover(inspect(bdf),self.cfg)
+        except Exception as error:self.failed.add(bdf);log(f'{bdf}: recovery failed; services held: {error}')
+        finally:self.last_end[bdf]=time.monotonic()
+
+
 def watch(cfg):
-    if os.geteuid(): raise RecoveryError('Watcher requires root')
+    if os.geteuid():raise RecoveryError('Watcher requires root')
     allowed=set(cfg.get('watch_gpus',[]))
-    if not allowed: raise RecoveryError('Explicit watch_gpus allowlist required')
-    attempts=collections.defaultdict(collections.deque);failed=set()
-    with subprocess.Popen(['/usr/bin/journalctl','-k','-f','-n','0','-o','json'],stdout=subprocess.PIPE,text=True) as journal:
-        for line in journal.stdout:
-            try: gpu=xid_bdf(json.loads(line).get('MESSAGE',''))
-            except ValueError: continue
-            if gpu not in allowed: continue
-            now=time.time();history=attempts[gpu]
-            while history and now-history[0]>3600: history.popleft()
-            if gpu in failed or len(history)>=3:
-                log(f'{gpu}: suppressed after failure or three attempts/hour');continue
-            history.append(now)
-            try: recover(inspect(gpu),cfg)
-            except Exception as e: failed.add(gpu);log(f'{gpu}: {e}')
+    if not allowed or any(not isinstance(bdf,str) or not BDF.fullmatch(bdf) for bdf in allowed):
+        raise RecoveryError('Explicit watch_gpus PCI allowlist required')
+    interval=cfg.get('watch_health_interval',15)
+    if not isinstance(interval,(int,float)) or not 5<=interval<=3600:
+        raise RecoveryError('watch_health_interval must be 5..3600 seconds')
+    events=queue.Queue(maxsize=1024);controller=Watcher(cfg)
+    journal=subprocess.Popen(['/usr/bin/journalctl','-k','-f','-n','0','-o','json'],stdout=subprocess.PIPE,text=True)
+    try:
+        def read():
+            for line in journal.stdout:events.put(line)
+            events.put(None)
+        threading.Thread(target=read,daemon=True).start()
+        for bdf in sorted(allowed):controller.check(bdf)
+        deadline=time.monotonic()+interval
+        while True:
+            if time.monotonic()>=deadline:
+                for bdf in sorted(allowed):controller.check(bdf)
+                deadline=time.monotonic()+interval
+            try:line=events.get(timeout=max(.1,deadline-time.monotonic()))
+            except queue.Empty:continue
+            if line is None:raise RecoveryError('Kernel journal stream ended')
+            try:entry=json.loads(line);bdf=xid_bdf(entry.get('MESSAGE',''))
+            except ValueError:continue
+            if bdf not in allowed:continue
+            try:event_time=int(entry['__MONOTONIC_TIMESTAMP'])/1e6
+            except (KeyError,ValueError,TypeError):event_time=None
+            controller.check(bdf,True,event_time)
+    finally:
+        if journal.poll() is None:
+            journal.terminate()
+            try:journal.wait(timeout=5)
+            except subprocess.TimeoutExpired:journal.kill();journal.wait(timeout=5)
+        journal.stdout.close()
+
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch'])
+    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch','hold','resume','check'])
     parser.add_argument('--gpu',help='PCI BDF; automatically selected only when exactly one NVIDIA GPU exists')
     parser.add_argument('--config',help='JSON configuration; root-managed for privileged operations')
     parser.add_argument('--backend-only',action='store_true',help='Skip NVML reset; use configured lifecycle adapter')
     parser.add_argument('--deep',action='store_true',help='Statically decode ACPI reset and power methods using ACPICA iasl')
-    args=parser.parse_args();cfg=config(args.config,args.action in ('auto','recover','watch'))
+    args=parser.parse_args();cfg=config(args.config,args.action in ('auto','recover','watch','hold','resume') or args.action=='check' and os.geteuid()==0)
     if args.deep: cfg['deep_discovery']=True
     if args.action=='watch': return watch(cfg)
+    if args.action in ('hold','resume'):
+        if os.geteuid() or not args.gpu or not BDF.fullmatch(args.gpu):raise RecoveryError('Root and explicit --gpu PCI address required')
+        if args.action=='resume':return resume(args.gpu,cfg)
+        return Services(service_items(cfg,args.gpu),args.gpu).stop()
     found=discover()
     if args.action=='discover': print(json.dumps(found,indent=2));return
     gpu=args.gpu or (found[0] if len(found)==1 else None)
     if not gpu: raise RecoveryError('Use --gpu to explicitly select one GPU')
     target=inspect(gpu)
+    if args.action=='check':return verify(target,cfg)
     if args.action in ('explore','plan'):
         print(json.dumps(explore(target,cfg),indent=2));return
     recover(target,cfg,args.backend_only)

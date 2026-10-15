@@ -43,6 +43,7 @@ class DomainTests(unittest.TestCase):
   stack.enter_context(patch.object(g,'verify',side_effect=verify))
  def run_command(self,argv,timeout,env):
   phase=env['GPU_RECOVERY_PHASE'];self.events.append((phase,None))
+  self.assertIn(env['GPU_RECOVERY_INTENT'], ('recover','resume'))
   if phase=='recover':return self.reset_rc,'adapter outcome'
   value={'schema':1,'nonce':env['GPU_RECOVERY_NONCE'],'boot_id':env['GPU_RECOVERY_BOOT_ID'],
          'members':json.loads(env['GPU_DOMAIN_MEMBERS']),'scope_bdfs':json.loads(env['GPU_DOMAIN_SCOPE']),

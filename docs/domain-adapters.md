@@ -74,6 +74,7 @@ Each stage receives these environment variables:
 | `GPU_DOMAIN_SCOPE` | JSON array of the current approved slot functions |
 | `GPU_RECOVERY_BOOT_ID` | Current Linux boot ID |
 | `GPU_RECOVERY_NONCE` | Fresh unpredictable token for this operation |
+| `GPU_RECOVERY_INTENT` | `recover` for a reset attempt, or `resume` for verification without resetting |
 
 Preflight and validation must return a single JSON object, without additional
 output on stdout or stderr. The current command runner merges both streams.

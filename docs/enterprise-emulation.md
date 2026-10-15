@@ -73,9 +73,12 @@ QEMU testdev identities.
 | Last member workload failure | Eight POSTs and seven successful member checks; no service starts |
 | Failed fabric validation / stale validation nonce | All eight member checks complete; final domain validation refuses release |
 | Resume after external restoration | Persistent holds released only after whole-domain verification; zero reset POSTs |
+| Restart after lost reset reply | One POST total; a fresh adapter process refuses another reset and preserves holds/journal |
+| Whole-domain reconciliation | External restoration followed by resume; zero additional reset POSTs; journal and holds cleared only after verification |
+| Failed reconciliation | One POST total; failed fabric check preserves both journal and service holds |
 | NVMe in proposed reset scope | Scope refusal before any reset; seeded counters unchanged |
 
-There are 14 normal-layout cases and one separate shared-storage case per
+There are 17 normal-layout cases and one separate shared-storage case per
 architecture. All tests also require boot continuity and unchanged unrelated
 NVMe identity/configuration. NVMe namespace I/O is not tested: this fixture has no
 backing storage namespace. Missing physical endpoints, actual broken PCI links,
@@ -88,8 +91,8 @@ Recorded on October 15, 2026 with QEMU 10.2.1:
 
 | Guest | Kernel | Normal campaign | Shared-storage refusal |
 | --- | --- | --- | --- |
-| x86-64 Q35 | 7.0.0-38-generic | 14/14 passed | 1/1 passed |
-| ARM64 virt | 6.12.107+deb13-arm64 | 14/14 passed | 1/1 passed |
+| x86-64 Q35 | 7.0.0-38-generic | 17/17 passed | 1/1 passed |
+| ARM64 virt | 6.12.107+deb13-arm64 | 17/17 passed | 1/1 passed |
 
 Results are stored under [experiments/results](../experiments/results/).
 Use their input hashes to identify the tested source; later modifications require
@@ -116,3 +119,9 @@ models of boot ROMs, privileged engines, PCIe behavior, memory controllers and
 board reset circuitry. Replaying isolated source methods or booting a generic
 RISC-V emulator does not supply those models. The service retains holds and
 escalates when it lacks a verified recovery path.
+
+The reset journal is persisted before the first POST, with checkpoints around
+each request. The restart cases retain that state across fresh adapter
+subprocesses. Other fault cases reset the fixture journal between independent
+injections. The guest runner normalizes `/run` permissions before building its
+initramfs, so journal operations exercise the production root-managed-path checks.

@@ -16,6 +16,7 @@ install -o root -g root -m 0644 "$task_root/domain_adapter.py" /usr/local/lib/gp
 install -o root -g root -m 0644 "$task_root/service_assessment.py" /usr/local/lib/gpu-recovery-generic/service_assessment.py
 install -d -o root -g root -m 0755 /usr/local/lib/gpu-recovery-generic/adapters
 install -o root -g root -m 0755 "$task_root/adapters/redfish_gpu.py" /usr/local/lib/gpu-recovery-generic/adapters/redfish_gpu.py
+install -o root -g root -m 0644 "$task_root/adapters/reset_journal.py" /usr/local/lib/gpu-recovery-generic/adapters/reset_journal.py
 install -o root -g root -m 0755 "$task_root/cuda_probe.py" /usr/local/lib/gpu-recovery-generic/cuda_probe.py
 install -o root -g root -m 0755 "$task_root/firmware_policy.py" /usr/local/lib/gpu-recovery-generic/firmware_policy.py
 install -o root -g root -m 0755 "$task_root/firmware_image.py" /usr/local/lib/gpu-recovery-generic/firmware_image.py

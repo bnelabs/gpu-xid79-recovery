@@ -116,7 +116,8 @@ def lifecycle():
     if cfg['fault'] == 'ownership-denied':
         value['exclusive_local_control'] = False
     if phase == 'validation':
-        value.update(workloads_verified=True, fabric_verified=cfg['fault'] != 'fabric-failed')
+        value.update(workloads_verified=True, fabric_verified=cfg['fault'] != 'fabric-failed',
+                     management_reset_resolved=True)
         if cfg['fault'] == 'stale-validation':
             value['nonce'] = 'previous-operation'
     print(json.dumps(value))

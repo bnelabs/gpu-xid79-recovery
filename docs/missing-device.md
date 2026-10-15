@@ -68,3 +68,33 @@ When firmware, power, or a PCIe fault leaves the endpoint electrically
 unreachable, a rescan may find nothing. A separate supported reset/power path is
 still necessary. Linux's [error-recovery documentation](https://docs.kernel.org/PCI/pci-error-recovery.html)
 also notes that a device can remain inaccessible even after a slot reset.
+
+## Pre-fault topology checker
+
+`experiments/topology_snapshot.py` now captures an isolated slot's PCI identities,
+resolved paths, parent, function list, downstream scope and current boot ID. Its
+`assess` command works even after the target disappears. It rejects changed boot
+identity, changed parent identity/path, unexpected downstream devices, changed
+visible target identity/path, and an absent target whose scope is not empty.
+
+```bash
+python3 experiments/topology_snapshot.py capture --gpu 0000:01:00.0 > snapshot.json
+python3 experiments/topology_snapshot.py assess snapshot.json
+```
+
+Both commands are read-only. The output is diagnostic data, not authorization:
+`reset_authorized` remains false. The snapshot is not signed or installed in a
+trusted recovery store. Identical PCI IDs and topology cannot distinguish a
+replacement of the same model. No physical GPU UUID, fabric ownership, service
+quiescence or independent controller mapping is established by this tool.
+
+The missing-device QEMU lab now runs this checker before its experimental scoped
+rescan. It still admits a synthetic endpoint and removes it logically. It does
+not simulate an electrically lost NVIDIA GPU. Unit tests separately cover changed
+boot, changed parent, new peer, remaining slot function and malformed PCI paths.
+
+This provides reusable checks for a future missing-device recovery path. It does
+not enable that path in the production watcher. NVIDIA's
+[drain/remove/discover API](https://docs.nvidia.com/deploy/nvml-api/latest/api/group__nvmlZPI.html)
+explicitly supports lifecycle coordination with out-of-band tools; those APIs
+cannot provide missing physical reset control on their own.

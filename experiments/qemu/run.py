@@ -30,6 +30,7 @@ def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_p
  repo=pathlib.Path(__file__).resolve().parents[2]
  copy_file(repo/'gpu_recovery.py',root,'lab/gpu_recovery.py')
  copy_file(pathlib.Path(__file__).with_name('missing_guest.py' if missing else 'scope_guest.py' if scope_peer else 'aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ if missing:copy_file(repo/'experiments/topology_snapshot.py',root,'lab/topology_snapshot.py')
  if aer_driver:copy_file(aer_driver,root,'lab/aer_test_driver.ko')
  stub=root/'usr/bin/nvidia-smi'
  stub.write_text('#!/bin/sh\ncase "$*" in *--query-compute-apps=pid*) exit 0;; *) exit 1;; esac\n');stub.chmod(0o755)

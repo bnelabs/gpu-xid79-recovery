@@ -8,7 +8,7 @@ Discovery accepts NVIDIA display and compute-accelerator PCI classes. A model na
 | RTX 4090 / Ada AD102 | GA100 full-chip path, TU102 FLR implementation, Ada GSP scrubber | No |
 | RTX 5090 / Blackwell GB202 | GH100 FLR implementation, GB202 BAR firewall wait | No |
 | Hopper / H100 | GH100 FLR and secondary-bus reset, fabric constraints | No |
-| Blackwell data center / GB100 family | GB100 FLR trigger and config-readiness wait, fabric constraints | No |
+| B200 / B300 SXM and GB200 / GB300 | GB100-family FLR trigger and config-readiness wait; platform firmware and fabric lifecycle | No |
 | Other or future NVIDIA devices | Runtime discovery; capability and topology checks | No |
 
 This review uses NVIDIA open kernel modules 615.78.08, commit `ca2d03e6fafd4d4b56b383497d931c25b283bfcf`. It reviews host-side firmware loading and reset control, not a complete decompilation of proprietary VBIOS or GSP firmware.
@@ -20,6 +20,8 @@ The driver's generated HAL dispatch assigns AD102 to the TU102 FLR implementatio
 GB202 also waits for the BAR firewall to disengage after reset. The driver describes FSP startup and configuration retry release taking roughly 800 ms, followed by a bounded firewall wait. A readable vendor ID alone therefore does not mean that firmware and BAR access are ready. Recovery must complete driver initialization and a workload check.
 
 The driver loads a common `gsp_ga10x` container for several families, including Ada, Hopper, and Blackwell. It selects family-specific signature sections inside that container. Sharing a filename does not imply identical boot or reset behavior. The container version must match its driver release.
+
+For B200/B300 SXM and Grace Blackwell systems, see the [enterprise Blackwell review](enterprise-blackwell.md). It records reset-related firmware fixes and separates a GPU reset from a tray or rack power cycle.
 
 ## Reset selection
 

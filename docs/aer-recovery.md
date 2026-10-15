@@ -85,3 +85,5 @@ These additions are read-only. They do not clear error status, enable DPC,
 force native AER ownership, retrain a link, inject a host error, or register
 NVIDIA driver callbacks. The recovery controller still needs a supported reset
 path and successful post-reset verification.
+
+See also [upstream link retraining](link-retraining.md) for port-side training diagnostics and the Linux 2.5 GT/s workaround.

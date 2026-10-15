@@ -3,6 +3,26 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_link_training_evidence_preserves_missing_and_unimplemented_fields(self):
+        raw=bytearray(256);raw[:2]=b'\x86\x80';raw[0x34]=0x40
+        raw[0x40]=0x10;raw[0x42]=0x42  # PCIe v2 root port
+        raw[0x4c:0x50]=(1<<20).to_bytes(4,'little')
+        raw[0x52:0x54]=(0x4000|0x800|0x104).to_bytes(2,'little')
+        raw[0x70:0x72]=(4).to_bytes(2,'little')
+        cap=g.pci_capabilities(raw)['standard'][0]
+        self.assertTrue(cap['data_link_active_reporting'])
+        self.assertTrue(cap['link_bandwidth_management_status'])
+        self.assertTrue(cap['link_training'])
+        self.assertFalse(cap['data_link_active'])
+        self.assertEqual(cap['current_link_speed_code'],4)
+        self.assertEqual(cap['current_link_width'],16)
+        self.assertEqual(cap['target_link_speed_code'],4)
+        truncated=g.pci_capabilities(raw[:0x50])['standard'][0]
+        self.assertIsNone(truncated['link_bandwidth_management_status'])
+        self.assertIsNone(truncated['target_link_speed_code'])
+        raw[0x42]=0x41  # v1 has no Link Control 2
+        self.assertIsNone(g.pci_capabilities(raw)['standard'][0]['target_link_speed_code'])
+
     def test_aer_dpc_and_link_status_are_decoded_without_writes(self):
         raw=bytearray(512);raw[:2]=b'\xde\x10';raw[0x34]=0x40;raw[0x40]=0x10
         raw[0x50:0x52]=(0x10).to_bytes(2,'little');raw[0x52:0x54]=(0x2800).to_bytes(2,'little')

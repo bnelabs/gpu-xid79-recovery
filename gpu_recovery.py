@@ -114,6 +114,14 @@ def pci_capabilities(data):
             item['link_disabled']=bool(control&0x10) if control is not None else None
             item['link_training']=bool(link&0x800) if link is not None else None
             item['data_link_active']=bool(link&0x2000) if link is not None else None
+            linkcap=number(pointer+0xc,4)
+            item['data_link_active_reporting']=bool(linkcap&(1<<20)) if linkcap is not None else None
+            item['link_bandwidth_management_status']=bool(link&0x4000) if link is not None else None
+            item['current_link_speed_code']=link&15 if link is not None else None
+            item['current_link_width']=(link>>4)&63 if link is not None else None
+            version=flags&15 if flags is not None else None
+            control2=number(pointer+0x30,2) if version is not None and version>=2 else None
+            item['target_link_speed_code']=control2&15 if control2 is not None else None
             slot=number(pointer+0x14,4)
             item['slot_power_controller']=bool(slot&2) if flags is not None and flags&0x100 and item['port_type'] in (4,6) and slot is not None else None
         elif cap in (5,0x11): item['name']='MSI' if cap==5 else 'MSI-X'

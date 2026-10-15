@@ -39,6 +39,32 @@ def nvs_definition(source):
     return base,size,complete[0]
 
 
+def literal_named_nvs_definition(source,region):
+    """Resolve a flat region using literal Name operands; reject ambiguity."""
+    if not re.fullmatch(r'[A-Z_][A-Z0-9_]{3}',region):raise ValueError('Invalid region name')
+    clean=re.sub(r'/\*.*?\*/|//[^\n]*','',source,flags=re.S)
+    operand=r'(0x[0-9A-Fa-f]+|[A-Z_][A-Z0-9_]{3})'
+    declarations=list(re.finditer(r'OperationRegion\s*\('+region+r',\s*SystemMemory,\s*'+operand+r',\s*'+operand+r'\)',clean))
+    if len(declarations)!=1:raise ValueError('A unique literal/named region is required')
+    def resolve(value):
+        if value.startswith('0x'):return int(value,16)
+        names=re.findall(r'Name\s*\('+value+r',\s*(0x[0-9A-Fa-f]+)\s*\)',clean)
+        if len(names)!=1:raise ValueError('Ambiguous or nonliteral region operand')
+        # No AML evaluation: assignments would make this literal insufficient.
+        if re.search(r'\b'+value+r'\s*=|Store\s*\([^)]*,\s*'+value+r'\s*\)',clean):
+            raise ValueError('Region operand has a runtime assignment')
+        return int(names[0],16)
+    base,size=map(resolve,declarations[0].groups())
+    if not base or not 0<size<=65536:raise ValueError('Unsupported NVS range')
+    layouts=[]
+    for body in re.findall(r'Field\s*\('+region+r',[^)]*\)\s*\{([^{}]*)\}',clean,re.S):
+        try:fields,bits=field_layout(body)
+        except ValueError:continue
+        if bits==size*8:layouts.append(fields)
+    if len(layouts)!=1:raise ValueError('A unique complete NVS field layout is required')
+    return base,size,layouts[0]
+
+
 def nvs_resource(address,size,iomem):
     for line in iomem.splitlines():
         match=re.fullmatch(r'\s*([0-9a-fA-F]+)-([0-9a-fA-F]+) : (.*)',line)

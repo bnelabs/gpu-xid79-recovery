@@ -2,6 +2,14 @@ import unittest
 import firmware_runtime as f
 
 class FirmwareRuntimeTests(unittest.TestCase):
+    def test_named_region_requires_unique_literals_and_complete_layout(self):
+        source='Name (BASE, 0x1000) Name (SIZE, 0x04) OperationRegion (SANV, SystemMemory, BASE, SIZE) Field (SANV, AnyAcc, Lock, Preserve) { PFG1, 8, ,24 }'
+        self.assertEqual(f.literal_named_nvs_definition(source,'SANV'),(4096,4,{'PFG1':(0,8)}))
+        for bad in (source+' Name (BASE, 0x2000)',source+' BASE = 0x2000',
+                    source+' Store (0x2000, BASE)',source.replace('0x04','0x08')):
+            with self.assertRaises(ValueError):f.literal_named_nvs_definition(bad,'SANV')
+        with self.assertRaises(ValueError):f.literal_named_nvs_definition(source,'../bad')
+
     def test_overlay_views_do_not_hide_the_complete_nvs_layout(self):
         source='OperationRegion (GNVS, SystemMemory, 0x1000, 0x08) Field (GNVS, AnyAcc, Lock, Preserve) { P1RE, 32, P1RP, 8, ,24 } Field (GNVS, ByteAcc, NoLock, Preserve) { AAAA, 8 }'
         self.assertEqual(f.nvs_definition(source)[2]['P1RP'],(32,8))

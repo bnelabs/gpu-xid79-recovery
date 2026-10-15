@@ -394,6 +394,13 @@ def pci_error_inventory(target,root=SYSFS):
     return {bdf:{name:text(root/bdf/name) for name in names if (root/bdf/name).is_file()}
             for bdf in (target.bdf,target.bridge) if bdf}
 
+def subordinate_rescan_path(bridge,root=SYSFS):
+    """Find the bridge's child-bus rescan; device/rescan scans its parent bus."""
+    if not bridge or not BDF.fullmatch(bridge):return None
+    buses=[p for p in (root/bridge/'pci_bus').glob('*')
+           if re.fullmatch(r'[0-9a-f]{4}:[0-9a-f]{2}',p.name) and (p/'rescan').exists()]
+    return buses[0]/'rescan' if len(buses)==1 else None
+
 def management_inventory(target):
     # Enumerate existing OS devices only; do not send SMBus or NSM messages.
     return {'i2c_adapters':[{'adapter':p.name,'name':text(p/'name'),
@@ -455,6 +462,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
     raw=config_bytes(device/'config')
     reachable=(raw[:2] not in (b'\xff\xff',b'\x00\x00')) if len(raw)>=2 else None
     gpio=gpio_inventory()
+    rescan=subordinate_rescan_path(target.bridge,root)
     report={'board':board,'kernel':os.uname().release,'nvidia_version':text('/sys/module/nvidia/version'),
             'target':dataclasses.asdict(target),'pci':pci,'config_space_reachable':reachable,
             'kernel_reset':{'function':bool(target.reset_methods) and (device/'reset').exists(),
@@ -470,6 +478,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'management':management_inventory(target),
             'hotplug_slots':hotplug_inventory(target,root),
             'pci_error_counters':pci_error_inventory(target,root),
+            'subordinate_rescan_path':str(rescan) if rescan else None,
             'upstream_capabilities':pci_capabilities(config_bytes(root/target.bridge/'config')) if target.bridge else None,
             'd3cold_allowed_policy':text(device/'d3cold_allowed'),
             'profiles':[],'selected_backend':backend_for(target,cfg),

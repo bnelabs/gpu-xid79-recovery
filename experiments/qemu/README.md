@@ -70,6 +70,10 @@ These modes cannot be combined with `--shared` or `--slot-power`.
 admits both synthetic endpoints to test the multi-GPU fallback guard. These modes
 cannot be combined with AER or slot-power experiments. See [scenario results](../../docs/hardware-scenarios.md).
 
+`--missing` tests logical target removal and rediscovery through the surviving
+bridge's child-bus rescan interface. It uses separate bridges and cannot be
+combined with other experiment modes. See [scope and limits](../../docs/missing-device.md).
+
 ## Results recorded on October 15, 2026
 
 | Platform | Guest kernel | Isolated target | Shared bridge |

@@ -8,7 +8,7 @@ def copy_file(source,root,destination=None):
  destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source.resolve(),destination)
 
 
-def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_peer=None):
+def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_peer=None,missing=False):
  if userspace:
   shutil.copytree(userspace,root,dirs_exist_ok=True,symlinks=True)
  else:
@@ -29,7 +29,7 @@ def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None,scope_p
  # The real production controller is copied unchanged into the guest.
  repo=pathlib.Path(__file__).resolve().parents[2]
  copy_file(repo/'gpu_recovery.py',root,'lab/gpu_recovery.py')
- copy_file(pathlib.Path(__file__).with_name('scope_guest.py' if scope_peer else 'aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ copy_file(pathlib.Path(__file__).with_name('missing_guest.py' if missing else 'scope_guest.py' if scope_peer else 'aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
  if aer_driver:copy_file(aer_driver,root,'lab/aer_test_driver.ko')
  stub=root/'usr/bin/nvidia-smi'
  stub.write_text('#!/bin/sh\ncase "$*" in *--query-compute-apps=pid*) exit 0;; *) exit 1;; esac\n');stub.chmod(0o755)
@@ -54,15 +54,17 @@ def main():
  parser.add_argument('--aer',action='store_true',help='Inject a synthetic fatal AER into the guest root port')
  parser.add_argument('--aer-driver',type=pathlib.Path,help='Synthetic testdev kernel module loaded inside the AER guest only')
  parser.add_argument('--scope-peer',choices=['nvme','gpu'],help='Test recovery scope with an NVMe controller or a second admitted synthetic GPU')
+ parser.add_argument('--missing',action='store_true',help='Test guest logical removal and scoped rediscovery; no physical link-loss simulation')
  args=parser.parse_args()
  if args.slot_power and args.shared:parser.error('Slot-power experiment requires separate bridges')
  if args.aer and (args.shared or args.slot_power):parser.error('AER experiment requires separate bridges and no slot-power mode')
  if args.aer_driver and not args.aer:parser.error('--aer-driver requires --aer')
  if args.scope_peer and (args.aer or args.slot_power):parser.error('--scope-peer cannot be combined with AER or slot-power')
+ if args.missing and (args.scope_peer or args.aer or args.slot_power or args.shared):parser.error('--missing requires separate bridges and no other experiment mode')
  if args.arch=='aarch64' and not args.userspace:parser.error('ARM64 requires matching guest userspace')
  if not args.userspace and os.uname().machine!='x86_64':parser.error('Automatic userspace construction currently supports x86_64 hosts')
  with tempfile.TemporaryDirectory(prefix='gpu-qemu-') as directory:
-  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power,args.aer,args.aer_driver,args.scope_peer)
+  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power,args.aer,args.aer_driver,args.scope_peer,args.missing)
   names=[str(path.relative_to(root)) for path in sorted(root.rglob('*'))]
   packed=subprocess.run(['cpio','--null','-o','--format=newc','--owner=0:0'],cwd=root,
                         input=('\0'.join(names)+'\0').encode(),capture_output=True,check=True)

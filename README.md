@@ -26,6 +26,8 @@ The explorer also maps [PCIe hotplug slot controls](docs/slot-power.md) to their
 
 See [consumer and enterprise scenarios](docs/hardware-scenarios.md) for recovery boundaries, the new NVMe/multi-GPU scope experiments, and the explorer's kernel-fallback assessment.
 
+[Missing-device experiments](docs/missing-device.md) test logical removal and narrowly scoped rediscovery on x86 and ARM64. The explorer reports a subordinate-bus rescan path; it does not automatically rescan absent GPUs.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

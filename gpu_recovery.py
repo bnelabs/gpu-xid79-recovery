@@ -110,6 +110,10 @@ def pci_capabilities(data):
             item['flr_advertised']=bool(devcap&(1<<28)) if devcap is not None else None
             link=number(pointer+0x12,2)
             item['link_status']=hex(link) if link is not None else None
+            control=number(pointer+0x10,2)
+            item['link_disabled']=bool(control&0x10) if control is not None else None
+            item['link_training']=bool(link&0x800) if link is not None else None
+            item['data_link_active']=bool(link&0x2000) if link is not None else None
             slot=number(pointer+0x14,4)
             item['slot_power_controller']=bool(slot&2) if flags is not None and flags&0x100 and item['port_type'] in (4,6) and slot is not None else None
         elif cap in (5,0x11): item['name']='MSI' if cap==5 else 'MSI-X'
@@ -120,8 +124,20 @@ def pci_capabilities(data):
         seen.add(pointer);value=number(pointer,4)
         if value in (0,0xffffffff): break
         cap=value&0xffff
-        result['extended'].append({'id':cap,'name':names.get(cap,'Other'),
-                                   'version':(value>>16)&15,'offset':pointer})
+        item={'id':cap,'name':names.get(cap,'Other'),'version':(value>>16)&15,'offset':pointer}
+        if cap==1:
+            for field,offset in (('uncorrectable_status',4),('uncorrectable_mask',8),
+                                 ('fatal_severity',12),('correctable_status',16),('correctable_mask',20)):
+                register=number(pointer+offset,4)
+                item[field]=hex(register) if register is not None else None
+        elif cap==0x1d:
+            control=number(pointer+6,2);status=number(pointer+8,2)
+            item['control']=hex(control) if control is not None else None
+            item['status']=hex(status) if status is not None else None
+            item['triggered']=bool(status&1) if status is not None else None
+            item['trigger_reason']=(status>>1)&3 if status is not None else None
+            item['root_port_busy']=bool(status&0x10) if status is not None else None
+        result['extended'].append(item)
         pointer=(value>>20)&0xfff
     return result
 
@@ -372,6 +388,12 @@ def hotplug_inventory(target,root=SYSFS,slots_root=pathlib.Path('/sys/bus/pci/sl
                        'full_gpu_power_removal_verified':False})
     return result
 
+def pci_error_inventory(target,root=SYSFS):
+    names=('aer_dev_correctable','aer_dev_nonfatal','aer_dev_fatal',
+           'aer_rootport_total_err_cor','aer_rootport_total_err_nonfatal','aer_rootport_total_err_fatal')
+    return {bdf:{name:text(root/bdf/name) for name in names if (root/bdf/name).is_file()}
+            for bdf in (target.bdf,target.bridge) if bdf}
+
 def management_inventory(target):
     # Enumerate existing OS devices only; do not send SMBus or NSM messages.
     return {'i2c_adapters':[{'adapter':p.name,'name':text(p/'name'),
@@ -430,6 +452,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'nvidia':nvidia_inventory(target),
             'management':management_inventory(target),
             'hotplug_slots':hotplug_inventory(target,root),
+            'pci_error_counters':pci_error_inventory(target,root),
             'upstream_capabilities':pci_capabilities(config_bytes(root/target.bridge/'config')) if target.bridge else None,
             'd3cold_allowed_policy':text(device/'d3cold_allowed'),
             'profiles':[],'selected_backend':backend_for(target,cfg),

@@ -60,6 +60,11 @@ It checks removal scope and boot continuity, and records whether the target
 returns after power-on. Its `passed` field is not a recovery result. Both tested
 platforms removed the target but failed to restore it; see [results](../../docs/slot-power.md).
 
+For fatal AER status injection into the guest root port, use `--aer`. An optional
+`--aer-driver /path/to/aer_test_driver.ko` loads the synthetic testdev driver inside
+the guest to compare error-callback behavior. See [build instructions and results](../../docs/aer-recovery.md).
+These modes cannot be combined with `--shared` or `--slot-power`.
+
 ## Results recorded on October 15, 2026
 
 | Platform | Guest kernel | Isolated target | Shared bridge |

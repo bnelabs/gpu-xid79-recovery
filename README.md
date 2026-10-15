@@ -22,6 +22,8 @@ The [QEMU lab](experiments/qemu/README.md) runs the controller on both CPU archi
 
 The explorer also maps [PCIe hotplug slot controls](docs/slot-power.md) to their affected PCI devices. These are reported for investigation; automatic recovery does not toggle slot power.
 
+[AER recovery experiments](docs/aer-recovery.md) compare fatal-error handling with and without a synthetic error-aware driver. The explorer reports AER counters and DPC/link status when readable; this does not add NVIDIA driver recovery callbacks.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

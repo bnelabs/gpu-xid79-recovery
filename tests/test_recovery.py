@@ -3,6 +3,31 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_aer_dpc_and_link_status_are_decoded_without_writes(self):
+        raw=bytearray(512);raw[:2]=b'\xde\x10';raw[0x34]=0x40;raw[0x40]=0x10
+        raw[0x50:0x52]=(0x10).to_bytes(2,'little');raw[0x52:0x54]=(0x2800).to_bytes(2,'little')
+        raw[0x100:0x104]=(1|(1<<16)|(0x140<<20)).to_bytes(4,'little')
+        raw[0x104:0x108]=(0x4000).to_bytes(4,'little')
+        raw[0x140:0x144]=(0x1d|(1<<16)).to_bytes(4,'little')
+        raw[0x148:0x14a]=(0x15).to_bytes(2,'little')
+        report=g.pci_capabilities(bytes(raw))
+        link=report['standard'][0];aer,dpc=report['extended']
+        self.assertTrue(link['link_disabled']);self.assertTrue(link['link_training']);self.assertTrue(link['data_link_active'])
+        self.assertEqual(aer['uncorrectable_status'],'0x4000')
+        self.assertTrue(dpc['triggered']);self.assertTrue(dpc['root_port_busy']);self.assertEqual(dpc['trigger_reason'],2)
+        truncated=g.pci_capabilities(bytes(raw[:0x144]))['extended'][-1]
+        self.assertIsNone(truncated['triggered'])
+
+    def test_pci_error_counter_inventory_is_scoped_and_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory);device=root/'0000:01:00.0';device.mkdir()
+            (device/'aer_dev_fatal').write_text('TOTAL_ERR_FATAL 3')
+            (device/'reset').write_text('unchanged')
+            target=g.Target(device.name,[device.name],None,False,[],{})
+            report=g.pci_error_inventory(target,root)
+            self.assertEqual(report,{device.name:{'aer_dev_fatal':'TOTAL_ERR_FATAL 3'}})
+            self.assertEqual((device/'reset').read_text(),'unchanged')
+
     def test_hotplug_scope_includes_bridge_and_peer_not_only_gpu(self):
         with tempfile.TemporaryDirectory() as directory:
             base=pathlib.Path(directory);root=base/'pci';root.mkdir();slots=base/'slots';slots.mkdir()

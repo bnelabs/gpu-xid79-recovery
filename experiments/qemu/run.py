@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Boot a disposable Linux/QEMU reset lab. Never passes through host devices."""
-import argparse,gzip,json,os,pathlib,re,shutil,subprocess,tempfile
+import argparse,gzip,json,os,pathlib,re,shutil,socket,subprocess,tempfile,time
 
 
 def copy_file(source,root,destination=None):
@@ -8,7 +8,7 @@ def copy_file(source,root,destination=None):
  destination.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source.resolve(),destination)
 
 
-def build_root(root,userspace,slot_power=False):
+def build_root(root,userspace,slot_power=False,aer=False,aer_driver=None):
  if userspace:
   shutil.copytree(userspace,root,dirs_exist_ok=True,symlinks=True)
  else:
@@ -29,7 +29,8 @@ def build_root(root,userspace,slot_power=False):
  # The real production controller is copied unchanged into the guest.
  repo=pathlib.Path(__file__).resolve().parents[2]
  copy_file(repo/'gpu_recovery.py',root,'lab/gpu_recovery.py')
- copy_file(pathlib.Path(__file__).with_name('slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ copy_file(pathlib.Path(__file__).with_name('aer_guest.py' if aer else 'slot_power_guest.py' if slot_power else 'guest.py'),root,'lab/guest.py')
+ if aer_driver:copy_file(aer_driver,root,'lab/aer_test_driver.ko')
  stub=root/'usr/bin/nvidia-smi'
  stub.write_text('#!/bin/sh\ncase "$*" in *--query-compute-apps=pid*) exit 0;; *) exit 1;; esac\n');stub.chmod(0o755)
  init=root/'init';init.write_text('''#!/bin/sh
@@ -37,6 +38,7 @@ export PATH=/usr/bin:/bin
 /bin/busybox mount -t proc proc /proc
 /bin/busybox mount -t sysfs sysfs /sys
 /bin/busybox mount -t devtmpfs devtmpfs /dev
+[ ! -f /lab/aer_test_driver.ko ] || /bin/busybox insmod /lab/aer_test_driver.ko
 /usr/bin/python3 /lab/guest.py
 /bin/busybox poweroff -f
 ''');init.chmod(0o755)
@@ -49,12 +51,16 @@ def main():
  parser.add_argument('--userspace',type=pathlib.Path,help='Extracted matching guest userspace; required for ARM64')
  parser.add_argument('--shared',action='store_true');parser.add_argument('--output',required=True,type=pathlib.Path)
  parser.add_argument('--slot-power',action='store_true',help='Experiment with isolated guest slot power; no NVIDIA recovery claim')
+ parser.add_argument('--aer',action='store_true',help='Inject a synthetic fatal AER into the guest root port')
+ parser.add_argument('--aer-driver',type=pathlib.Path,help='Synthetic testdev kernel module loaded inside the AER guest only')
  args=parser.parse_args()
  if args.slot_power and args.shared:parser.error('Slot-power experiment requires separate bridges')
+ if args.aer and (args.shared or args.slot_power):parser.error('AER experiment requires separate bridges and no slot-power mode')
+ if args.aer_driver and not args.aer:parser.error('--aer-driver requires --aer')
  if args.arch=='aarch64' and not args.userspace:parser.error('ARM64 requires matching guest userspace')
  if not args.userspace and os.uname().machine!='x86_64':parser.error('Automatic userspace construction currently supports x86_64 hosts')
  with tempfile.TemporaryDirectory(prefix='gpu-qemu-') as directory:
-  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power)
+  base=pathlib.Path(directory);root=base/'root';root.mkdir();build_root(root,args.userspace,args.slot_power,args.aer,args.aer_driver)
   names=[str(path.relative_to(root)) for path in sorted(root.rglob('*'))]
   packed=subprocess.run(['cpio','--null','-o','--format=newc','--owner=0:0'],cwd=root,
                         input=('\0'.join(names)+'\0').encode(),capture_output=True,check=True)
@@ -75,14 +81,41 @@ def main():
   else:command+=['-device','pcie-root-port,id=rp2,bus=pcie.0,addr=3,chassis=2','-device','pci-testdev,id=peer,bus=rp2,addr=0']
   args.output.parent.mkdir(parents=True,exist_ok=True)
   console_log=args.output.with_suffix('.console.log')
+  injection=None
+  if args.aer:command+=['-qmp',f'unix:{base}/qmp.sock,server=on,wait=off']
   with console_log.open('w') as log:
-   result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,text=True,timeout=180)
+   with subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,text=True) as process:
+    try:
+     if args.aer:
+      deadline=time.monotonic()+60
+      while 'GPU_AER_READY' not in console_log.read_text():
+       if process.poll() is not None:raise RuntimeError('Guest exited before AER readiness')
+       if time.monotonic()>deadline:raise RuntimeError('AER readiness timed out')
+       time.sleep(.1)
+      with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as connection:
+       connection.settimeout(10);connection.connect(str(base/'qmp.sock'))
+       stream=connection.makefile('rwb');json.loads(stream.readline())
+       def qmp(execute,arguments=None):
+        message={'execute':execute}
+        if arguments is not None:message['arguments']=arguments
+        stream.write((json.dumps(message)+'\n').encode());stream.flush()
+        while True:
+         response=json.loads(stream.readline())
+         if 'error' in response:raise RuntimeError(str(response['error']))
+         if 'return' in response:return response['return']
+       qmp('qmp_capabilities')
+       injection=qmp('human-monitor-command',{'command-line':'pcie_aer_inject_error rp1 0x20'})
+       if injection.strip() and not injection.startswith('OK id: rp1 '):raise RuntimeError('AER injection failed: '+injection)
+     returncode=process.wait(timeout=180)
+    finally:
+     if process.poll() is None:process.kill();process.wait(timeout=10)
   console_text=console_log.read_text()
   lines=[line for line in console_text.splitlines() if line.startswith('GPU_QEMU_RESULT=')]
   if not lines:raise RuntimeError('Guest produced no result; inspect '+str(args.output.with_suffix('.console.log')))
-  report=json.loads(lines[-1].split('=',1)[1]);report['qemu_returncode']=result.returncode
+  report=json.loads(lines[-1].split('=',1)[1]);report['qemu_returncode']=returncode
+  if args.aer:report['injection']={'command':'pcie_aer_inject_error rp1 0x20','monitor_response':injection}
   report['qemu_version']=subprocess.check_output([command[0],'-version'],text=True).splitlines()[0]
   args.output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
-  if result.returncode or not report.get('passed'):raise SystemExit(1)
+  if returncode or not report.get('passed'):raise SystemExit(1)
 
 if __name__=='__main__':main()

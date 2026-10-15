@@ -49,6 +49,10 @@ sudo gpu-recovery explore --deep --gpu 0000:07:00.0
 
 This decodes the machine's DSDT/SSDT tables, locates reset and power methods at the GPU and upstream port, and traces literal helper-method calls. GPIO discovery also reads line names, consumers, and polarity flags. The firmware scan runs without a board profile. Its report includes partial-decode errors and unresolved scope information; it does not execute firmware methods. To include it during recovery or watching, use `--deep` or set `"deep_discovery": true` in the config.
 
+Deep discovery also follows literal `_PRR`, `_PR0`, and `_PR3` references into `PowerResource` objects. Its `resource_graph` shows reset methods, other static consumers, conflicting definitions, and unresolved conditional relationships. It does not infer exclusive ownership from a single visible reference.
+
+On hardware whose kernel lists `acpi` in the GPU’s `reset_method`, set `"kernel_reset_mode": "acpi"` to use that firmware reset through the kernel. The controller restores the prior method order afterward. See [firmware reset interfaces](docs/firmware-reset-interfaces.md) for scope and limitations.
+
 Firmware can describe a reset through `_RST`, power resources, or a `_DSD` GPIO mapping. When that description is missing, unnamed GPIO lines cannot identify the physical PERST connection. The scan reports candidates for an adapter; it cannot generate a board's missing wiring information.
 
 Some firmware also retains named reset settings in its platform configuration database. The experimental policy scanner extracts those names and assignments from IA32 firmware modules:

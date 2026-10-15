@@ -196,7 +196,7 @@ def asl_reset_objects(source,include_helpers=False):
                 finish=body_end if body_end is not None else close
                 snippet=source[tokens[i].start():tokens[finish].end()]
                 relevant=(kind=='Method' and name.split('.')[-1] in ('_RST','_PR0','_PR3','_PRR','_PS0','_PS3','_ON','_OFF') or kind=='Name' and (name.split('.')[-1] in ('_PR0','_PR3','_PRR') or name.split('.')[-1]=='_DSD' and re.search(r'"(?:reset-gpios|reset-gpio|gpio-line-names)"',snippet)))
-                if relevant or include_helpers and kind=='Method':
+                if relevant or include_helpers and kind in ('Method','PowerResource'):
                     result.append({'path':'\\'+'.'.join(path),'kind':kind,'source':snippet[:12000],
                                    'truncated':len(snippet)>12000,'reset_related':bool(relevant)})
                 if body_end is not None:
@@ -231,6 +231,50 @@ def trace_acpi_helpers(objects,scope,limit=128):
         item['unresolved_method_calls']=sorted(set(unresolved));result.append(item)
     return {'methods':result,'limit_reached':bool(pending),
             'coverage':'Literal method calls only; dynamic AML and external objects may remain unresolved'}
+
+def acpi_resource_graph(objects,scope):
+    """Find literal power/reset resource references; never execute AML."""
+    index=collections.defaultdict(list)
+    for item in objects:index[acpi_path(item['path'])].append(item)
+    resources={key:items for key,items in index.items() if any(item['kind']=='PowerResource' for item in items)}
+    references=collections.defaultdict(list);targets={acpi_path(path) for path in scope}
+    unresolved=[]
+    for key,items in index.items():
+        if key[-1] not in ('_PR0','_PR3','_PRR'):continue
+        for item in items:
+            source=re.sub(r'"(?:\\.|[^"\\])*"','""',item['source'])
+            for name in set(re.findall(r'[\\^A-Z_][\\^A-Z0-9_.]*',source)):
+                base=key[:-1]
+                if name.startswith('\\'):candidates=[acpi_path(name)]
+                elif name.startswith('^'):
+                    while name.startswith('^'):base=base[:-1];name=name[1:]
+                    candidates=[base+acpi_path(name)]
+                else:candidates=[base[:n]+acpi_path(name) for n in range(len(base),-1,-1)]
+                found=next((path for path in candidates if path in index),None)
+                if found in resources:
+                    reference={'object':item['path'],'consumer':'\\'+'.'.join(key[:-1]),
+                               'relationship':key[-1],
+                               'target_scope':key[:-1] in targets}
+                    if reference not in references[found]:references[found].append(reference)
+            if re.search(r'\b(?:If|Else|While|DerefOf|Index)\s*\(',source):unresolved.append(item['path'])
+    result=[]
+    for key,consumers in references.items():
+        if not any(item['target_scope'] for item in consumers):continue
+        definitions=resources[key]
+        ambiguous=len({item['source'] for item in definitions})>1
+        path='\\'+'.'.join(key)
+        methods=[item['path'] for item in objects if acpi_path(item['path'])[:-1]==key and item['kind']=='Method']
+        result.append({'path':path,'references':consumers,
+                       'other_static_consumers':sorted({item['consumer'] for item in consumers if not item['target_scope']}),
+                       'sharing_status':'multiple_static_consumers' if len({item['consumer'] for item in consumers})>1 else 'no_additional_static_consumers_found',
+                       'ambiguous_definition':ambiguous,'methods':sorted(set(methods)),
+                       'reset_method_present':any(acpi_path(method)[-1]=='_RST' for method in methods)})
+    resource_scopes=[item['path'] for item in result if not item['ambiguous_definition']]
+    return {'target_resources':sorted(result,key=lambda item:item['path']),
+            'resource_method_trace':trace_acpi_helpers(objects,resource_scopes),
+            'dynamic_relationships':sorted(set(unresolved)),
+            'coverage':'Literal references only; conditional, aliased, external or runtime-created relationships may be incomplete',
+            'action':'Read-only; resource presence is not authorization to reset or power-cycle it'}
 
 def firmware_reset_discovery(target,root=SYSFS):
     scope=[]
@@ -276,6 +320,7 @@ def firmware_reset_discovery(target,root=SYSFS):
                       objects=[o for o in objects if o['reset_related']],
                       matching_scope_objects=[o['path'] for o in objects if o['target_scope'] and o['reset_related']],
                       target_method_trace=trace_acpi_helpers(objects,scope),
+                      resource_graph=acpi_resource_graph(objects,scope),
                       decoder_returncode=rc,independent_table_fallback=fallback,
                       independent_perst_mapping='not established; declarations need resource and reset-scope verification')
         if rc: result['decoder_diagnostic']=out[-2000:]
@@ -496,11 +541,15 @@ def verify(target,cfg):
 
 def kernel_reset_paths(target,cfg,root=SYSFS):
     mode=cfg.get('kernel_reset_mode','auto')
-    if mode not in ('auto','device','bus'):
-        raise RecoveryError('kernel_reset_mode must be auto, device or bus')
+    if mode not in ('auto','device','bus','acpi'):
+        raise RecoveryError('kernel_reset_mode must be auto, device, bus or acpi')
     device=root/target.bdf/'reset'
     subordinate=root/target.bridge/'reset_subordinate' if target.bridge else None
     bus_available=subordinate is not None and subordinate.exists()
+    if mode=='acpi':
+        if 'acpi' not in target.reset_methods:
+            raise RecoveryError('ACPI reset is not listed by the kernel for this device')
+        return [device]
     if mode=='bus':
         if not bus_available:raise RecoveryError('Kernel subordinate bus reset is not exposed')
         return [subordinate]
@@ -520,12 +569,15 @@ def detached_reset(target,cfg,root=SYSFS):
     methods=kernel_reset_paths(target,cfg,root)
     if not methods:
         raise RecoveryError('No kernel reset mechanism exposed')
-    detached=[];blocked=False
+    detached=[];blocked=False;method_override=False
     try:
         # Unbind auxiliary functions first, GPU last; preserve original drivers.
         for bdf in sorted(target.drivers,key=lambda x:x==target.bdf):
             write_sysfs(root/bdf/'driver/unbind',bdf)
             detached.append(bdf)
+        if cfg.get('kernel_reset_mode')=='acpi':
+            write_sysfs(root/target.bdf/'reset_method','acpi')
+            method_override=True
         errors=[]
         for method in methods:
             try:
@@ -541,8 +593,12 @@ def detached_reset(target,cfg,root=SYSFS):
     finally:
         # A blocked detach/reset must not be followed by another kernel call
         # against its locked driver/device. Report manual intervention instead.
-        if detached and not blocked:
+        if (detached or method_override) and not blocked:
             errors=[]
+            if method_override:
+                try:write_sysfs(root/target.bdf/'reset_method',' '.join(target.reset_methods))
+                except CommandTimeout:raise
+                except RecoveryError as e:errors.append(str(e))
             for bdf in reversed(detached):
                 try: write_sysfs(root.parent/'drivers'/target.drivers[bdf]/'bind',bdf)
                 except RecoveryError as e: errors.append(str(e))

@@ -27,6 +27,7 @@ The driver loads a common `gsp_ga10x` container for several families, including 
 
 - `auto`: try the device's kernel reset, then the bridge's `reset_subordinate` when exposed. If PCI vendor reads return all ones or zero and the bridge reset exists, use that bridge path directly.
 - `device`: use the target function's `reset` file. Its enabled kernel methods determine what kind of reset occurs; this option does not force FLR.
+- `acpi`: temporarily select the kernel-listed `acpi` method for the target device, use its `reset` interface, then restore the original enabled-method order. If `acpi` is not listed, stop before detach. A blocked operation stops all further calls.
 - `bus`: use the upstream bridge's `reset_subordinate` directly. If the kernel does not expose it, stop before unbinding anything.
 
 Every kernel path still requires an isolated slot. Multi-GPU, MIG, NVLink, and virtualized setups require a lifecycle adapter when NVIDIA reset fails. Active-user or OS permission rejections stop recovery.

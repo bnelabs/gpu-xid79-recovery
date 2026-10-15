@@ -3,6 +3,30 @@ from unittest.mock import patch, mock_open
 import gpu_recovery as g
 
 class RecoveryTests(unittest.TestCase):
+    def test_shared_acpi_reset_resource_is_found_outside_gpu_namespace(self):
+        source=r'''Scope (\_SB.PCI0) {
+          PowerResource (RST0, 0, 0) { Method (_RST, 0) { HELP () } Method (HELP, 0) { Return (One) } }
+          Device (GPU0) { Name (_PRR, Package () { ^RST0 }) }
+          Device (NET0) { Method (_PR3, 0) { Return (Package () { ^RST0 }) } }
+        }'''
+        objects=g.asl_reset_objects(source,include_helpers=True)
+        graph=g.acpi_resource_graph(objects,[r'\_SB.PCI0.GPU0',r'\_SB.PCI0'])
+        resource=graph['target_resources'][0]
+        self.assertEqual(resource['path'],r'\_SB.PCI0.RST0')
+        self.assertEqual(resource['other_static_consumers'],[r'\_SB.PCI0.NET0'])
+        self.assertEqual(resource['sharing_status'],'multiple_static_consumers')
+        self.assertTrue(resource['reset_method_present'])
+        self.assertEqual({item['path'] for item in graph['resource_method_trace']['methods']},
+                         {r'\_SB.PCI0.RST0._RST',r'\_SB.PCI0.RST0.HELP'})
+    def test_dynamic_and_conflicting_acpi_resources_do_not_create_a_reset_plan(self):
+        source=r'''PowerResource (\RST0, 0, 0) { Method (_RST, 0) { Return (One) } }
+          Device (\GPU0) { Method (_PRR, 0) { If (FLAG) { Return (Package () { \RST0 }) } Return (Package () {}) } }'''
+        objects=g.asl_reset_objects(source,include_helpers=True)
+        objects+=g.asl_reset_objects(r'PowerResource (\RST0, 0, 0) { Method (_RST, 0) { Return (Zero) } }',include_helpers=True)
+        graph=g.acpi_resource_graph(objects,[r'\GPU0'])
+        self.assertTrue(graph['target_resources'][0]['ambiguous_definition'])
+        self.assertEqual(graph['resource_method_trace']['methods'],[])
+        self.assertEqual(graph['dynamic_relationships'],[r'\GPU0._PRR'])
     def test_lost_config_cannot_claim_an_inband_reset_transport(self):
         report={'config_space_reachable':False,'pci_capabilities':{'standard':[]},
                 'nvidia':{'recovery_action':'Reset'},'selected_backend':None}
@@ -175,6 +199,44 @@ class RecoveryTests(unittest.TestCase):
             self.assertFalse(any(p.endswith('/reset') for p in paths))
             self.assertTrue(paths[3].endswith('/drivers/nvidia/bind'))
             self.assertTrue(paths[4].endswith('/drivers/snd_hda_intel/bind'))
+    def test_acpi_reset_uses_only_kernel_listed_method_and_restores_order(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root)
+            target.reset_methods=['flr','acpi'];target.drivers={target.bdf:'nvidia'}
+            with patch.object(g,'write_sysfs') as write:
+                g.detached_reset(target,{'kernel_reset_mode':'acpi'},root)
+            calls=[(str(c.args[0]),c.args[1]) for c in write.call_args_list]
+            self.assertTrue(calls[0][0].endswith('/driver/unbind'))
+            self.assertEqual(calls[1],(str(root/target.bdf/'reset_method'),'acpi'))
+            self.assertEqual(calls[2],(str(root/target.bdf/'reset'),'1'))
+            self.assertEqual(calls[3],(str(root/target.bdf/'reset_method'),'flr acpi'))
+            self.assertTrue(calls[4][0].endswith('/drivers/nvidia/bind'))
+            target.drivers={}
+            with patch.object(g,'write_sysfs') as write:g.detached_reset(target,{'kernel_reset_mode':'acpi'},root)
+            self.assertEqual(write.call_args.args,(root/target.bdf/'reset_method','flr acpi'))
+    def test_acpi_reset_timeout_stops_before_restoring_methods_or_rebinding(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root);target.reset_methods=['acpi','flr']
+            target.drivers={target.bdf:'nvidia'}
+            def write(path,value):
+                if path.name=='reset':raise g.CommandTimeout('blocked')
+            with patch.object(g,'write_sysfs',side_effect=write) as calls:
+                with self.assertRaises(g.CommandTimeout):g.detached_reset(target,{'kernel_reset_mode':'acpi'},root)
+            self.assertEqual(len(calls.call_args_list),3)
+    def test_failed_acpi_reset_restores_method_order_and_original_driver(self):
+        temp,root=self.fixture()
+        with temp:
+            target=g.inspect('0000:07:00.0',root);target.reset_methods=['flr','acpi']
+            target.drivers={target.bdf:'nvidia'}
+            def write(path,value):
+                if path.name=='reset':raise g.RecoveryError('firmware reset failed')
+            with patch.object(g,'write_sysfs',side_effect=write) as calls:
+                with self.assertRaisesRegex(g.RecoveryError,'firmware reset failed'):
+                    g.detached_reset(target,{'kernel_reset_mode':'acpi'},root)
+            self.assertEqual(calls.call_args_list[-2].args,(root/target.bdf/'reset_method','flr acpi'))
+            self.assertTrue(str(calls.call_args.args[0]).endswith('/drivers/nvidia/bind'))
     def test_lost_link_auto_selects_upstream_reset_without_model_names(self):
         temp,root=self.fixture()
         with temp:
@@ -189,7 +251,7 @@ class RecoveryTests(unittest.TestCase):
         temp,root=self.fixture()
         with temp:
             target=g.inspect('0000:07:00.0',root)
-            for mode in ('bus','unknown'):
+            for mode in ('bus','acpi','unknown'):
                 with patch.object(g,'write_sysfs') as write:
                     with self.assertRaises(g.RecoveryError):g.detached_reset(target,{'kernel_reset_mode':mode},root)
                     write.assert_not_called()

@@ -24,6 +24,8 @@ The explorer also maps [PCIe hotplug slot controls](docs/slot-power.md) to their
 
 [AER recovery experiments](docs/aer-recovery.md) compare fatal-error handling with and without a synthetic error-aware driver. The explorer reports AER counters and DPC/link status when readable; this does not add NVIDIA driver recovery callbacks.
 
+See [consumer and enterprise scenarios](docs/hardware-scenarios.md) for recovery boundaries, the new NVMe/multi-GPU scope experiments, and the explorer's kernel-fallback assessment.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

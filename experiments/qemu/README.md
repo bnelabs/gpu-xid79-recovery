@@ -65,6 +65,11 @@ For fatal AER status injection into the guest root port, use `--aer`. An optiona
 the guest to compare error-callback behavior. See [build instructions and results](../../docs/aer-recovery.md).
 These modes cannot be combined with `--shared` or `--slot-power`.
 
+`--scope-peer nvme` uses an emulated NVMe controller as the neighbor. Add
+`--shared` to test refusal when storage shares the target bridge. `--scope-peer gpu`
+admits both synthetic endpoints to test the multi-GPU fallback guard. These modes
+cannot be combined with AER or slot-power experiments. See [scenario results](../../docs/hardware-scenarios.md).
+
 ## Results recorded on October 15, 2026
 
 | Platform | Guest kernel | Isolated target | Shared bridge |

@@ -428,6 +428,23 @@ def kernel_fallback_allowed(report,gpu_count):
     if virtualization and virtualization not in ('none','n/a','not supported'):
         raise RecoveryError('Virtualized GPU; generic PCI fallback requires a host-aware adapter')
 
+def kernel_fallback_assessment(report,gpu_count):
+    """Explain existing runtime guards, without authorizing a reset."""
+    blockers=[]
+    try:kernel_fallback_allowed(report,gpu_count)
+    except RecoveryError as error:blockers.append(str(error))
+    target=report['target'];kernel=report['kernel_reset']
+    if not target['isolated']:blockers.append('Bridge contains other devices or isolation is unknown')
+    if target['drivers'].get(target['bdf']) not in (None,'nvidia'):
+        blockers.append('Target uses VFIO or another unsupported driver lifecycle')
+    if kernel.get('selection_error'):blockers.append(kernel['selection_error'])
+    elif not kernel.get('candidate_paths'):blockers.append('No kernel reset path selected')
+    nvidia=report['nvidia']
+    unknown=[field for field in ('nvlink_present','mig_mode','virtualization_mode') if nvidia.get(field) is None]
+    return {'gpu_count':gpu_count,'blocked_by_existing_guards':bool(blockers),'blockers':blockers,
+            'unknown_nvidia_fields':unknown,'hardware_recovery_verified':False,
+            'note':'No listed blocker does not establish recovery support; active clients, command failures, timeouts and post-reset validation are checked during an attempt'}
+
 def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
     """Inventory only: never evaluate ACPI methods or request/toggle GPIO lines."""
     board={key:text(DMI/key) for key in ('board_vendor','board_name','board_version',
@@ -524,6 +541,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
     else:
         report['selection']='targeted NVML reset, then isolated kernel reset if available'
     report['reset_assessment']=reset_assessment(report)
+    report['kernel_fallback_assessment']=kernel_fallback_assessment(report,len(discover(root)))
     return report
 
 def discovered_config(report,cfg):

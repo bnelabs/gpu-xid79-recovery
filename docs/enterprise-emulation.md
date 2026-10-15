@@ -76,12 +76,15 @@ QEMU testdev identities.
 | Restart after lost reset reply | One POST total; a fresh adapter process refuses another reset and preserves holds/journal |
 | Whole-domain reconciliation | External restoration followed by resume; zero additional reset POSTs; journal and holds cleared only after verification |
 | Failed reconciliation | One POST total; failed fabric check preserves both journal and service holds |
+| Prepared two-device / entire eight-device disappearance | Independent BMC reset, scoped child-bus rediscovery and all-member verification succeed before release |
+| Missing control confirmation / expired capsule / changed saved parent | Refuse before reset; configured workloads held |
+| Wrong UUID after rediscovery | Full reset/rediscovery completes, but identity verification keeps workloads held |
 | NVMe in proposed reset scope | Scope refusal before any reset; seeded counters unchanged |
 
-There are 17 normal-layout cases and one separate shared-storage case per
+There are 23 normal-layout cases and one separate shared-storage case per
 architecture. All tests also require boot continuity and unchanged unrelated
 NVMe identity/configuration. NVMe namespace I/O is not tested: this fixture has no
-backing storage namespace. Missing physical endpoints, actual broken PCI links,
+backing storage namespace. Logical endpoint disappearance is tested; actual broken PCI links,
 NVIDIA driver teardown and BMC transport surviving a real fault remain outside
 this campaign.
 
@@ -91,8 +94,8 @@ Recorded on October 15, 2026 with QEMU 10.2.1:
 
 | Guest | Kernel | Normal campaign | Shared-storage refusal |
 | --- | --- | --- | --- |
-| x86-64 Q35 | 7.0.0-38-generic | 17/17 passed | 1/1 passed |
-| ARM64 virt | 6.12.107+deb13-arm64 | 17/17 passed | 1/1 passed |
+| x86-64 Q35 | 7.0.0-38-generic | 23/23 passed | 1/1 passed |
+| ARM64 virt | 6.12.107+deb13-arm64 | 23/23 passed | 1/1 passed |
 
 Results are stored under [experiments/results](../experiments/results/).
 Use their input hashes to identify the tested source; later modifications require
@@ -125,3 +128,10 @@ each request. The restart cases retain that state across fresh adapter
 subprocesses. Other fault cases reset the fixture journal between independent
 injections. The guest runner normalizes `/run` permissions before building its
 initramfs, so journal operations exercise the production root-managed-path checks.
+
+[Prepared-domain cases](prepared-domain-recovery.md) additionally remove two or
+all eight synthetic endpoints from the real guest sysfs tree. The BMC fixture
+keeps independently stored upstream-controller mappings, so it does not need to
+resolve a missing endpoint's sysfs path. On return, the fixture remaps testdev
+resources before checking counters. Logical removal leaves QEMU endpoints
+electrically present; this does not emulate a powered-off GPU or a broken link.

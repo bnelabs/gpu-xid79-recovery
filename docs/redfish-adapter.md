@@ -62,8 +62,9 @@ These are placeholders. Set `watch_gpus`, configured workload services and
 physical UUIDs as described in [domain adapters](domain-adapters.md). For a larger
 domain, add all members to both the adapter's targets and controller's domain;
 all watched member backends must agree. Existing PCI scope checks still reject
-unapproved devices, nested bridges and absent members. BMC connectivity does not
-bypass those limitations. No node/tray power cycle is attempted.
+unapproved devices and nested bridges. Absent members require the optional
+[prepared-domain contract](prepared-domain-recovery.md); BMC connectivity alone
+does not bypass identity or reset-scope requirements. No node/tray power cycle is attempted.
 
 ## Required platform lifecycle helper
 
@@ -166,3 +167,10 @@ was lost. Do not delete journal files as a substitute for reconciliation.
 The journal unit tests use real files and locks with substituted ownership checks;
 the QEMU campaign executes real root-path checks and adapter subprocesses. It
 models process restart, not a physical power failure or storage durability fault.
+
+For prepared missing-device recovery, helpers also receive
+`GPU_MISSING_FUNCTIONS`. Their preflight receipt must include the exact
+`missing_functions` list and `independent_reset_control: true`, established from
+the actual management mapping and surviving transport. The adapter enforces
+those fields before any reset request; core capsule checks then constrain
+rediscovery to recorded child buses.

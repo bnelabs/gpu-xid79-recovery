@@ -69,3 +69,12 @@ class AssessmentTests(unittest.TestCase):
         with patch.object(g, 'discover', return_value=[]):
             with self.assertRaises(g.RecoveryError):
                 fleet(g, {}, '../config')
+
+    def test_missing_prepared_domain_is_reported_without_loading_or_authorizing(self):
+        cfg=self.config()
+        cfg['backends']={BDF:{'domain':{'capsule':'/root/domain.json'}}}
+        with patch.object(g,'discover',return_value=[]), patch.object(g,'explore') as explore:
+            result=fleet(g,cfg)
+        explore.assert_not_called()
+        self.assertTrue(result['gpus'][0]['prepared_domain_configured'])
+        self.assertFalse(result['gpus'][0]['hardware_recovery_verified'])

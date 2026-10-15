@@ -32,7 +32,13 @@ The explorer also maps [PCIe hotplug slot controls](docs/slot-power.md) to their
 
 See [consumer and enterprise scenarios](docs/hardware-scenarios.md) for recovery boundaries, the new NVMe/multi-GPU scope experiments, and the explorer's kernel-fallback assessment.
 
-[Missing-device experiments](docs/missing-device.md) test logical removal and narrowly scoped rediscovery on x86 and ARM64. The explorer reports a subordinate-bus rescan path; it does not automatically rescan absent GPUs.
+[Prepared domain recovery](docs/prepared-domain-recovery.md) can now recover
+explicitly provisioned domains whose GPU functions have disappeared from sysfs.
+It combines a pre-fault capsule with fresh independent-control receipts and scoped
+child-bus rescans, followed by full UUID/workload/fabric validation. Generic
+recovery without that configured path continues to refuse absent devices.
+
+[Missing-device experiments](docs/missing-device.md) test logical removal and narrowly scoped rediscovery on x86 and ARM64. The explorer reports a subordinate-bus rescan path; generic recovery does not automatically rescan absent GPUs.
 
 The [management firmware review](docs/management-firmware.md) checks OpenSMA's reset receiver, platform hook, and simulation limits. Its default hook does not provide physical reset; the included replay makes no hardware calls.
 

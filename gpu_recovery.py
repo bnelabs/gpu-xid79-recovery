@@ -784,6 +784,11 @@ def recover(target,cfg,backend_only=False):
     # No services or PCI state have been changed at this point.
     explicit_backend=cfg.get('backends',{}).get(target.bdf)
     target=inspect(target.bdf)
+    # An explicit lifecycle domain already supplies scope and platform checks.
+    # Do not force it through a potentially wedged NVIDIA diagnostic query first.
+    if isinstance(explicit_backend,dict) and 'domain' in explicit_backend:
+        from domain_adapter import execute
+        return execute(sys.modules[__name__],target,cfg,explicit_backend)
     report=explore(target,cfg)
     log('Board exploration: '+json.dumps(report,sort_keys=True))
     cfg=discovered_config(report,cfg)
@@ -850,6 +855,21 @@ def recover(target,cfg,backend_only=False):
         if verified:services.restore()
         else:log('Recovery not verified; configured services remain held')
 
+
+def recover_bdf(bdf,cfg,backend_only=False):
+    """Permit an absent target only through an explicit prepared domain."""
+    try:target=inspect(bdf)
+    except RecoveryError:
+        if os.geteuid() or not isinstance(bdf,str) or not BDF.fullmatch(bdf) or (SYSFS/bdf).exists():raise
+        backend=cfg.get('backends',{}).get(bdf,{})
+        if not backend.get('domain',{}).get('capsule'):raise
+        from domain_adapter import execute
+        # execute validates the complete trusted capsule and the surviving PCI
+        # scope before using this selector; no invented PCI identity is trusted.
+        return execute(sys.modules[__name__],Target(bdf,[],None,False,[],{}),cfg,backend)
+    return recover(target,cfg,backend_only)
+
+
 def xid_bdf(message):
     match=re.search(r'Xid\s*\(PCI:([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2})(?:\.[0-7])?\):\s*79\b',message,re.I)
     return match[1].lower()+'.0' if match else None
@@ -887,6 +907,7 @@ class Watcher:
     def __init__(self,cfg,budget_path=None):
         self.cfg=dict(cfg);self.identities=dict(cfg.get('expected_gpu_uuids',{}))
         self.cfg['expected_gpu_uuids']=self.identities
+        self.capsule_refresh={}
         self.failed=set();self.last_end={};self.attempts=collections.defaultdict(collections.deque)
         self.path=budget_path or SERVICE_STATE.with_name('watch-budget.json')
         self.boot=text('/proc/sys/kernel/random/boot_id')
@@ -925,6 +946,26 @@ class Watcher:
                 raise IdentityMismatch('Domain contradicts pinned identity')
             self.identities[member]=uuid
         return sorted(approved)
+    def refresh_capsule(self,bdf):
+        backend=self.cfg.get('backends',{}).get(bdf,{})
+        domain=backend.get('domain',{})
+        if not domain.get('capsule'):return
+        import recovery_capsule
+        path=domain['capsule'];now=time.monotonic()
+        if not isinstance(path,str) or not pathlib.Path(path).is_absolute():
+            log(f'{bdf}: capsule preparation requires an absolute file path');return
+        maximum=domain.get('capsule_max_age',86400)
+        if type(maximum) not in (int,float) or not 60<=maximum<=604800:
+            log(f'{bdf}: capsule_max_age must be 60..604800 seconds');return
+        interval=min(300,maximum/2)
+        if now-self.capsule_refresh.get(path,float('-inf'))<interval:return
+        self.capsule_refresh[path]=now
+        try:
+            recovery_capsule.capture(sys.modules[__name__],self.cfg,backend)
+            log(f'{bdf}: healthy domain recovery capsule refreshed')
+        except BlockingIOError:return
+        except (CommandTimeout,IdentityMismatch,OSError):raise
+        except RecoveryError as error:log(f'{bdf}: capsule preparation unavailable: {error}')
     def check(self,bdf,event=False,event_time=None):
         try:affected=self.affected(bdf)
         except RecoveryError as error:
@@ -933,12 +974,15 @@ class Watcher:
             results=[self.hold(member) for member in affected]
             return all(results)
         try:
+            if self.cfg.get('backends',{}).get(bdf,{}).get('domain',{}).get('capsule') and not (SYSFS/bdf).exists():
+                raise RecoveryError('Prepared GPU missing from PCI enumeration')
             uuid=nvml_identity(bdf)
             if bdf in self.identities and self.identities[bdf]!=uuid:
                 hold_all();self.failed.update(affected)
                 log(f'{bdf}: UUID changed; services held, recovery refused');return
             if bdf not in self.identities:
                 self.identities[bdf]=uuid;self.save_budget()
+            if not event:self.refresh_capsule(bdf)
             if not event or event_time is not None and event_time<=self.last_end.get(bdf,0):return
         except IdentityMismatch as error:
             hold_all();self.failed.update(affected)
@@ -957,7 +1001,7 @@ class Watcher:
         for member in affected:self.attempts[member].append(now)
         self.save_budget()
         try:
-            recovered=recover(inspect(bdf),self.cfg)
+            recovered=recover_bdf(bdf,self.cfg)
             if isinstance(recovered,list) and set(recovered)!=set(affected):
                 raise RecoveryError('Recovered domain disagrees with watcher budget scope')
         except Exception as error:self.failed.update(affected);log(f'{bdf}: recovery failed; services held: {error}')
@@ -1013,18 +1057,26 @@ def watch(cfg):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch','hold','resume','check','assess'])
+    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch','hold','resume','check','assess','prepare'])
     parser.add_argument('--gpu',help='PCI BDF; automatically selected only when exactly one NVIDIA GPU exists')
     parser.add_argument('--config',help='JSON configuration; root-managed for privileged operations')
     parser.add_argument('--backend-only',action='store_true',help='Skip NVML reset; use configured lifecycle adapter')
     parser.add_argument('--deep',action='store_true',help='Statically decode ACPI reset and power methods using ACPICA iasl')
-    args=parser.parse_args();cfg=config(args.config,args.action in ('auto','recover','watch','hold','resume') or args.action=='check' and os.geteuid()==0)
+    args=parser.parse_args();cfg=config(args.config,args.action in ('auto','recover','watch','hold','resume','prepare') or args.action=='check' and os.geteuid()==0)
     if args.deep: cfg['deep_discovery']=True
     if args.action=='watch': return watch(cfg)
     if args.action in ('hold','resume'):
         if os.geteuid() or not args.gpu or not BDF.fullmatch(args.gpu):raise RecoveryError('Root and explicit --gpu PCI address required')
         if args.action=='resume':return resume(args.gpu,cfg)
         return Services(service_items(cfg,args.gpu),args.gpu).stop()
+    if args.action=='prepare':
+        if os.geteuid() or not args.gpu or not BDF.fullmatch(args.gpu):raise RecoveryError('Root and explicit --gpu required for domain preparation')
+        backend=cfg.get('backends',{}).get(args.gpu,{})
+        if args.gpu not in backend.get('domain',{}).get('members',{}):raise RecoveryError('Preparation requires an explicit member of a lifecycle domain')
+        from recovery_capsule import capture
+        print(json.dumps(capture(sys.modules[__name__],cfg,backend),indent=2));return
+    if args.action in ('auto','recover') and args.gpu:
+        return recover_bdf(args.gpu,cfg,args.backend_only)
     if args.action=='assess':
         from service_assessment import fleet
         print(json.dumps(fleet(sys.modules[__name__],cfg,args.gpu),indent=2));return

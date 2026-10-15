@@ -22,6 +22,7 @@
       "held_records": 0,
       "verified_members": 8,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -54,6 +55,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -86,6 +88,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -118,6 +121,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -150,6 +154,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -182,6 +187,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -214,6 +220,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -246,6 +253,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -278,6 +286,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -310,6 +319,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -342,6 +352,7 @@
       "held_records": 9,
       "verified_members": 7,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -374,6 +385,7 @@
       "held_records": 9,
       "verified_members": 8,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -406,6 +418,7 @@
       "held_records": 9,
       "verified_members": 8,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -438,6 +451,7 @@
       "held_records": 0,
       "verified_members": 8,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -470,6 +484,7 @@
       "held_records": 9,
       "verified_members": 0,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -502,6 +517,7 @@
       "held_records": 0,
       "verified_members": 8,
       "unresolved_operations": 0,
+      "initially_missing_functions": [],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -534,6 +550,229 @@
       "held_records": 9,
       "verified_members": 8,
       "unresolved_operations": 1,
+      "initially_missing_functions": [],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-missing",
+      "passed": true,
+      "error": null,
+      "reset_posts": 8,
+      "service_starts": 9,
+      "held_records": 0,
+      "verified_members": 8,
+      "unresolved_operations": 0,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0"
+      ],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-all-missing",
+      "passed": true,
+      "error": null,
+      "reset_posts": 8,
+      "service_starts": 9,
+      "held_records": 0,
+      "verified_members": 8,
+      "unresolved_operations": 0,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0",
+        "0000:04:01.0",
+        "0000:04:02.0",
+        "0000:06:01.0",
+        "0000:06:02.0",
+        "0000:08:01.0",
+        "0000:08:02.0"
+      ],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 0,
+        "0000:02:02.0": 0,
+        "0000:04:01.0": 0,
+        "0000:04:02.0": 0,
+        "0000:06:01.0": 0,
+        "0000:06:02.0": 0,
+        "0000:08:01.0": 0,
+        "0000:08:02.0": 0
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-no-independent-control",
+      "passed": true,
+      "error": "Domain preflight command failed; no further reset attempted: Domain preflight receipt mismatch: independent_reset_control",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "unresolved_operations": 0,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0"
+      ],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-expired",
+      "passed": true,
+      "error": "Domain capsule expired; prepare it while the whole domain is healthy",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "unresolved_operations": 0,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0"
+      ],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-parent-changed",
+      "passed": true,
+      "error": "Capsule parent identity or physical path changed",
+      "reset_posts": 0,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 0,
+      "unresolved_operations": 0,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0"
+      ],
+      "before": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "after": {
+        "0000:02:01.0": 1,
+        "0000:02:02.0": 1,
+        "0000:04:01.0": 1,
+        "0000:04:02.0": 1,
+        "0000:06:01.0": 1,
+        "0000:06:02.0": 1,
+        "0000:08:01.0": 1,
+        "0000:08:02.0": 1
+      },
+      "boot_unchanged": true,
+      "storage_unchanged": true
+    },
+    {
+      "fault": "capsule-wrong-uuid",
+      "passed": true,
+      "error": "Injected replacement UUID after rediscovery",
+      "reset_posts": 8,
+      "service_starts": 0,
+      "held_records": 9,
+      "verified_members": 7,
+      "unresolved_operations": 1,
+      "initially_missing_functions": [
+        "0000:02:01.0",
+        "0000:02:02.0"
+      ],
       "before": {
         "0000:02:01.0": 1,
         "0000:02:02.0": 1,
@@ -570,13 +809,14 @@
   "qemu_returncode": 0,
   "qemu_version": "QEMU emulator version 10.2.1 (Debian 1:10.2.1+ds-1ubuntu3.2)",
   "inputs_sha256": {
-    "gpu_recovery.py": "8bc902b06082de573a4b7a38c64e24ba937d1caa58e8c6be4ca9519ede865ce1",
-    "domain_adapter.py": "ce26067168cffc9c429287e9cf30cb0f3220193108aef5abc790a749248bc6b8",
-    "adapters/redfish_gpu.py": "f5ae5cdd92ae2e7e5487df62478a1984a6ce3ac8ea089089b2b53d88de43b952",
+    "gpu_recovery.py": "e4383b8f9202a9c1684c139961991c15779d54085aa24005dfb9722c34244dfa",
+    "domain_adapter.py": "c76356aa385c78cd948953b52ad6d4d5b27786718a9a29048599ace1d74a7ed4",
+    "recovery_capsule.py": "7f42688771e131023856633f5044e7a44a78447ccf80dc9f20c62d54d71b4a30",
+    "adapters/redfish_gpu.py": "4fdda2262c0c5fac4817c9888c53729ff7997ca660e65cc9a6c65cfb9d247a3f",
     "adapters/reset_journal.py": "a6c7ea7a9aee9a707df2fa8f5206d786c9fcdecd7989adb0f682360bc3095276",
-    "experiments/qemu/enterprise_guest.py": "c923b461777543696ebd515d106c6238dddc6532414fb3f55a0f32548c9a0f38",
-    "experiments/qemu/enterprise_fixture.py": "6c84b09eb1788a7b70f23be9ad7a306903b925effcf8e6652911ee186be617ee",
-    "experiments/qemu/run_enterprise.py": "ec56dc068f543e1260449e6c08d5c8b209b20e39d9f2ffb45448ddc27df37d57"
+    "experiments/qemu/enterprise_guest.py": "9885254fe4be30ad3cb6b57b9b24800f83419fa1d5434249b9a7f428864c44a9",
+    "experiments/qemu/enterprise_fixture.py": "b2f580ce79f40b4834c9db18080a53c7a1cd2e3b422110517019fcfaf9095dae",
+    "experiments/qemu/run_enterprise.py": "63540c045fd2071820c0bb51ce6a12fea2693428001330ccf2ed24e61869994c"
   },
   "kernel_sha256": "9c37ace54ef7e1919411fd912e9f34d6982ddd7f4c8ef3c8aee56f4c4d70db67"
 }

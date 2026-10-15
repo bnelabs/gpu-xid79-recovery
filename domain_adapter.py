@@ -40,7 +40,7 @@ def inventory(g,approved,root):
     return targets,sorted(scope),snapshots
 
 
-def receipt(g,argv,env,approved,scope,boot,nonce,phase):
+def receipt(g,argv,env,approved,scope,boot,nonce,phase,extra=None):
     rc,out=g.run(argv,60,env)
     if rc:raise g.RecoveryError(f'Domain {phase} command failed; no further reset attempted: {out}')
     try:value=json.loads(out)
@@ -50,6 +50,7 @@ def receipt(g,argv,env,approved,scope,boot,nonce,phase):
               'scope_bdfs':scope,'exclusive_local_control':True,'host_reboot_required':False,
               'clients_quiesced':True,'ready':True}
     if phase=='validation':required.update(workloads_verified=True,fabric_verified=True)
+    if extra:required.update(extra)
     for key,expected in required.items():
         actual=value.get(key)
         if type(actual) is not type(expected) or actual!=expected:
@@ -79,33 +80,52 @@ def execute(g,target,cfg,backend,reset=True,root=None):
     if any(bdf in expected and expected[bdf]!=uuid for bdf,uuid in approved.items()):
         raise g.RecoveryError('Domain contradicts configured GPU UUID')
     effective=dict(cfg,expected_gpu_uuids={**expected,**approved})
+    capsule=None
+    capsule_mode=bool(domain.get('capsule'))
+    if capsule_mode:import recovery_capsule
+    def current_inventory(complete=False):
+        if capsule is None:return inventory(g,approved,root)
+        found,scope,_=recovery_capsule.inspect_scope(g,capsule,backend,root,complete)
+        return found,scope,capsule['functions']
     with open('/run/gpu-recovery-orchestrator.lock','w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        targets,scope,snapshots=inventory(g,approved,root)
+        if capsule_mode:
+            # Holding configured workloads does not authorize a reset. Preserve
+            # holds even if the cached recovery envelope is stale or invalid.
+            for bdf in sorted(approved):g.Services(g.service_items(cfg,bdf),bdf).stop()
+            capsule=recovery_capsule.load(g,backend)
+        targets,scope,snapshots=current_inventory()
+        missing=[] if capsule is None else recovery_capsule.inspect_scope(g,capsule,backend,root)[2]
+        if missing and not reset:raise g.RecoveryError('Resume requires all capsule functions already present')
         boot=g.text('/proc/sys/kernel/random/boot_id')
         if not boot:raise g.RecoveryError('Missing boot identity')
         nonce=secrets.token_hex(16)
         env=dict(os.environ,GPU_BDF=target.bdf,GPU_DOMAIN_MEMBERS=json.dumps(approved,sort_keys=True),
                  GPU_DOMAIN_SCOPE=json.dumps(scope),GPU_RECOVERY_BOOT_ID=boot,GPU_RECOVERY_NONCE=nonce,
-                 GPU_RECOVERY_INTENT='recover' if reset else 'resume')
+                 GPU_RECOVERY_INTENT='recover' if reset else 'resume',GPU_MISSING_FUNCTIONS=json.dumps(missing))
         services=[g.Services(g.service_items(cfg,bdf),bdf) for bdf in sorted(approved)]
         verified=False
         try:
             for service in services:service.stop()
-            receipt(g,commands[1],dict(env,GPU_RECOVERY_PHASE='preflight'),approved,scope,boot,nonce,'preflight')
+            receipt(g,commands[1],dict(env,GPU_RECOVERY_PHASE='preflight'),approved,scope,boot,nonce,'preflight',
+                    {'missing_functions':missing,'independent_reset_control':True} if missing else None)
             g.log('Domain preflight accepted: '+', '.join(sorted(approved)))
-            if inventory(g,approved,root)[2]!=snapshots:raise g.RecoveryError('Domain topology changed after preflight')
+            if current_inventory()[2]!=snapshots:raise g.RecoveryError('Domain topology changed after preflight')
+            if capsule is not None and recovery_capsule.inspect_scope(g,capsule,backend,root)[2]!=missing:
+                raise g.RecoveryError('Domain presence changed after preflight')
             if g.text('/proc/sys/kernel/random/boot_id')!=boot:raise g.RecoveryError('Boot changed before domain action')
             if reset:
                 rc,out=g.run(commands[0],180,dict(env,GPU_RECOVERY_PHASE='recover'))
                 g.log(out)
                 if rc:raise g.RecoveryError('Domain adapter failed; no fallback attempted')
+            if capsule is not None and missing:
+                recovery_capsule.rediscover(g,capsule,backend,root)
             # Validate all physical identities/workloads before releasing any hold.
-            if inventory(g,approved,root)[2]!=snapshots:raise g.RecoveryError('Domain topology changed during recovery')
+            if current_inventory(complete=True)[2]!=snapshots:raise g.RecoveryError('Domain topology changed during recovery')
             for bdf in sorted(approved):g.verify(g.inspect(bdf,root),effective)
             receipt(g,commands[2],dict(env,GPU_RECOVERY_PHASE='validation'),approved,scope,boot,nonce,'validation')
             if g.text('/proc/sys/kernel/random/boot_id')!=boot:raise g.RecoveryError('Boot changed during domain recovery')
-            if inventory(g,approved,root)[2]!=snapshots:raise g.RecoveryError('Domain topology changed during validation')
+            if current_inventory(complete=True)[2]!=snapshots:raise g.RecoveryError('Domain topology changed during validation')
             g.log('All domain members and adapter validation passed')
             verified=True
         finally:

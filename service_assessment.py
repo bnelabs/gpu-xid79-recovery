@@ -65,9 +65,11 @@ def fleet(controller, cfg, gpu=None):
         if not isinstance(bdf, str) or not controller.BDF.fullmatch(bdf):
             raise controller.RecoveryError('Assessment requires valid PCI addresses')
         if bdf not in found:
-            results.append({'bdf': bdf, 'present': False,
-                            'configuration_gaps': ['GPU missing from PCI discovery; automatic rediscovery is unsupported'],
-                            'hardware_recovery_verified': False})
+            prepared = bool(cfg.get('backends', {}).get(bdf, {}).get('domain', {}).get('capsule'))
+            gap = ('GPU missing; prepared domain recovery still requires capsule, surviving scope and independent-control checks'
+                   if prepared else 'GPU missing from PCI discovery; no prepared domain recovery configured')
+            results.append({'bdf': bdf, 'present': False, 'prepared_domain_configured': prepared,
+                            'configuration_gaps': [gap], 'hardware_recovery_verified': False})
             continue
         try:
             report = controller.explore(controller.inspect(bdf), cfg)

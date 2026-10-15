@@ -1,6 +1,7 @@
 import contextlib
 import json
 import pathlib
+import shutil
 import tempfile
 import unittest
 from unittest.mock import Mock,patch
@@ -148,3 +149,72 @@ v={'schema':1,'nonce':os.environ['GPU_RECOVERY_NONCE'],'boot_id':os.environ['GPU
   with patch.object(g,'run',side_effect=g.CommandTimeout('blocked')):
    with self.assertRaises(g.CommandTimeout):self.execute()
   self.assert_no_restore();self.assertNotIn(('recover',None),self.events)
+
+ def prepare_capsule(self):
+  import recovery_capsule as c
+  for index,bdf in enumerate(self.approved,1):
+   parent=(self.root/bdf).resolve().parent
+   for key,value in {'vendor':'0x8086','device':'0x1234','class':'0x060400'}.items():(parent/key).write_text(value)
+   (self.root/parent.name).symlink_to(parent)
+   bus=parent/'pci_bus'/f'0000:0{index}';bus.mkdir(parents=True);(bus/'rescan').write_text('untouched')
+  self.backend['domain']['capsule']=str(self.root.parent/'state/domain.json')
+  self.cfg['expected_gpu_uuids']=dict(self.approved)
+  with patch.object(c.os,'geteuid',return_value=0), patch.object(c,'LOCK_PATH',self.root.parent/'capsule.lock'), \
+       patch.object(g,'trusted_file',side_effect=lambda p:pathlib.Path(p)), patch.object(g,'nvml_identity',side_effect=self.approved.get):
+   c.capture(g,self.cfg,self.backend,self.root)
+  self.backup={p.name:p.read_text() for p in (self.root/A).iterdir() if p.is_file()}
+  self.physical=(self.root/A).resolve()
+  (self.root/A).unlink();shutil.rmtree(self.physical)
+ def execute_absent(self):
+  with patch.object(g,'trusted_file',side_effect=lambda p:pathlib.Path(p)):
+   return d.execute(g,g.Target(A,[],None,False,[],{}),self.cfg,self.backend,root=self.root)
+ def test_missing_capsule_member_needs_independent_control_receipt(self):
+  self.prepare_capsule()
+  with patch.object(g,'write_sysfs') as write:
+   with self.assertRaisesRegex(g.RecoveryError,'missing_functions'):self.execute_absent()
+  write.assert_not_called();self.assert_no_restore();self.assertNotIn(('recover',None),self.events)
+ def test_missing_member_rescan_and_full_validation_before_release(self):
+  self.prepare_capsule()
+  self.receipt_mutation=lambda value,phase:value.update(missing_functions=[A],independent_reset_control=True)
+  def rescan(path,value):
+   self.assertTrue(str(path).endswith('/rescan'));self.assertIn('/pci_bus/',str(path))
+   if not self.physical.exists():
+    self.physical.mkdir()
+    for key,content in self.backup.items():(self.physical/key).write_text(content)
+    (self.root/A).symlink_to(self.physical)
+  with patch.object(g,'write_sysfs',side_effect=rescan) as write:
+   self.assertEqual(self.execute_absent(),[A,B])
+  self.assertEqual(write.call_count,2)
+  self.assertEqual([event for event in self.events if event[0]=='verify'],[('verify',A),('verify',B)])
+  self.assertEqual(self.events[-2:],[('restore',B),('restore',A)])
+ def test_new_peer_after_missing_preflight_stops_before_reset_or_rescan(self):
+  self.prepare_capsule()
+  def mutate(value,phase):
+   value.update(missing_functions=[A],independent_reset_control=True)
+   if phase=='preflight':(self.physical.parent/'0000:01:01.0').mkdir()
+  self.receipt_mutation=mutate
+  with patch.object(g,'write_sysfs') as write:
+   with self.assertRaisesRegex(g.RecoveryError,'Unapproved device'):self.execute_absent()
+  write.assert_not_called();self.assertNotIn(('recover',None),self.events);self.assert_no_restore()
+ def test_missing_capsule_resume_never_rescans_or_calls_adapter(self):
+  self.prepare_capsule()
+  with patch.object(g,'trusted_file',side_effect=lambda p:pathlib.Path(p)), patch.object(g,'write_sysfs') as write:
+   with self.assertRaisesRegex(g.RecoveryError,'Resume requires'):
+    d.execute(g,g.Target(A,[],None,False,[],{}),self.cfg,self.backend,False,self.root)
+  write.assert_not_called();self.assertNotIn(('recover',None),self.events)
+
+ def test_missing_member_rejects_string_independent_control_claim(self):
+  self.prepare_capsule()
+  self.receipt_mutation=lambda value,phase:value.update(missing_functions=[A],independent_reset_control='true')
+  with patch.object(g,'write_sysfs') as write:
+   with self.assertRaisesRegex(g.RecoveryError,'independent_reset_control'):self.execute_absent()
+  write.assert_not_called();self.assert_no_restore()
+
+ def test_unreadable_capsule_keeps_configured_services_held(self):
+  self.prepare_capsule()
+  pathlib.Path(self.backend['domain']['capsule']).unlink()
+  with patch.object(g,'write_sysfs') as write:
+   with self.assertRaisesRegex(g.RecoveryError,'Cannot read domain capsule'):self.execute_absent()
+  write.assert_not_called();self.assert_no_restore()
+  self.assertIn(('stop',A),self.events);self.assertIn(('stop',B),self.events)
+  self.assertNotIn(('recover',None),self.events)

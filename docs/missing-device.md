@@ -1,13 +1,14 @@
 # When the GPU disappears from PCI enumeration
 
-The generic controller requires a currently discovered NVIDIA PCI function.
-If that function has been removed from the kernel device tree, `inspect` refuses
-it and the generic watcher does not proceed with recovery. This is different
-from a present sysfs device whose configuration reads return all ones.
+Generic recovery still requires a currently discovered NVIDIA PCI function.
+The optional [prepared domain path](prepared-domain-recovery.md) now supports
+missing functions through a boot-bound pre-fault capsule, fresh independent
+adapter preflight, narrowly scoped rediscovery and whole-domain verification.
+No snapshot alone authorizes a reset, and no generic missing-device reset is
+attempted without that explicitly configured lifecycle path.
 
-That limitation is intentional today: a PCI address from an earlier inventory
-is insufficient authority to reset a device that is no longer visible. No
-automatic missing-device recovery path has been added.
+The experiments below describe the earlier diagnostic checker and establish
+why PCI addresses alone are insufficient. They remain useful scope evidence.
 
 ## Logical removal is not electrical failure
 
@@ -86,15 +87,15 @@ Both commands are read-only. The output is diagnostic data, not authorization:
 `reset_authorized` remains false. The snapshot is not signed or installed in a
 trusted recovery store. Identical PCI IDs and topology cannot distinguish a
 replacement of the same model. No physical GPU UUID, fabric ownership, service
-quiescence or independent controller mapping is established by this tool.
+quiescence or independent controller mapping is established by this diagnostic tool.
 
 The missing-device QEMU lab now runs this checker before its experimental scoped
 rescan. It still admits a synthetic endpoint and removes it logically. It does
 not simulate an electrically lost NVIDIA GPU. Unit tests separately cover changed
 boot, changed parent, new peer, remaining slot function and malformed PCI paths.
 
-This provides reusable checks for a future missing-device recovery path. It does
-not enable that path in the production watcher. NVIDIA's
+This provides reusable checks for a future missing-device recovery path. The diagnostic checker itself enables no production reset path; the separate
+prepared-domain implementation adds the explicit capsule/adapter contract. NVIDIA's
 [drain/remove/discover API](https://docs.nvidia.com/deploy/nvml-api/latest/api/group__nvmlZPI.html)
 explicitly supports lifecycle coordination with out-of-band tools; those APIs
 cannot provide missing physical reset control on their own.

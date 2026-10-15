@@ -12,8 +12,11 @@ Discovery recognizes NVIDIA display and compute-accelerator device classes, incl
 | Generic NVIDIA/kernel/ACPI reset paths | Controller tests and interface discovery; recovery on other hardware remains unverified. |
 | RTX 4090, RTX 5090, and enterprise GPU paths | Source and firmware-interface review; no recovery hardware tests in this project. |
 | Experimental driver teardown patch | Module build and modeled C tests; not loaded or hardware-validated. |
+| QEMU integration lab | Real Linux guests on x86-64 Q35 and ARM64 virt: isolated bridge resets and shared-bridge refusal passed using synthetic PCI devices. |
 
 See [GPU families and firmware](docs/gpu-families.md) for the reviewed paths. Neither source review, emulation, nor a successful build establishes recovery on an untested GPU. The default installer does not install the experimental driver patch.
+
+The [QEMU lab](experiments/qemu/README.md) runs the controller on both CPU architectures without access to host devices. It tests kernel reset behavior and isolation; it does not emulate NVIDIA firmware or prove recovery from a physical Xid79 fault.
 
 ## Install
 

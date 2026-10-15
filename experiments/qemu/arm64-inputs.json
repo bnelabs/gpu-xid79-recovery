@@ -1,0 +1,128 @@
+{
+  "kernel": {
+    "url": "https://deb.debian.org/debian/dists/stable/main/installer-arm64/current/images/netboot/debian-installer/arm64/linux",
+    "sha256": "9c37ace54ef7e1919411fd912e9f34d6982ddd7f4c8ef3c8aee56f4c4d70db67"
+  },
+  "packages": [
+    {
+      "Package": "busybox-static",
+      "Version": "1:1.37.0-6+b9",
+      "Filename": "pool/main/b/busybox/busybox-static_1.37.0-6+b9_arm64.deb",
+      "SHA256": "c833be48abfa16bc19c4966ec93e289ff1ce5d2f1476cad3a57bd105378cd15c"
+    },
+    {
+      "Package": "python3.13-minimal",
+      "Version": "3.13.5-2+deb13u5",
+      "Filename": "pool/main/p/python3.13/python3.13-minimal_3.13.5-2+deb13u5_arm64.deb",
+      "SHA256": "95237a3ad99bf9366308e16f7c79449c9371c4cff9c883772fb7c254652467eb"
+    },
+    {
+      "Package": "libpython3.13-minimal",
+      "Version": "3.13.5-2+deb13u5",
+      "Filename": "pool/main/p/python3.13/libpython3.13-minimal_3.13.5-2+deb13u5_arm64.deb",
+      "SHA256": "3655ef258b19142cf6fe38ef89731d5c630b2cf3309632494a720b28c1cfcd85"
+    },
+    {
+      "Package": "libpython3.13-stdlib",
+      "Version": "3.13.5-2+deb13u5",
+      "Filename": "pool/main/p/python3.13/libpython3.13-stdlib_3.13.5-2+deb13u5_arm64.deb",
+      "SHA256": "d1178d24e4d143cc6c577d9dc0f26dd982efccc2e600d25ce86361f168a22be0"
+    },
+    {
+      "Package": "libc6",
+      "Version": "2.41-12+deb13u4",
+      "Filename": "pool/main/g/glibc/libc6_2.41-12+deb13u4_arm64.deb",
+      "SHA256": "8784eda966b189c777a384dac5ce009e8fc9b52d006926c5a013e7fa8aa688cc"
+    },
+    {
+      "Package": "libexpat1",
+      "Version": "2.8.3-1~deb13u1",
+      "Filename": "pool/main/e/expat/libexpat1_2.8.3-1~deb13u1_arm64.deb",
+      "SHA256": "c3248c4beb721c8290e6e34527ae56b1fc965aa6a14982ca602df4458ef0854e"
+    },
+    {
+      "Package": "zlib1g",
+      "Version": "1:1.3.dfsg+really1.3.1-1+b1",
+      "Filename": "pool/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+b1_arm64.deb",
+      "SHA256": "209aa5cf671e97b9eb0410844fa6df4cae2e75b0c72e7802ab6c8ece13e6ddef"
+    },
+    {
+      "Package": "libssl3t64",
+      "Version": "3.5.7-1~deb13u2",
+      "Filename": "pool/main/o/openssl/libssl3t64_3.5.7-1~deb13u2_arm64.deb",
+      "SHA256": "ec131326aa9fa9ec934eca386bc7991f328fe383eaefd3e43bd8901a9199c5ae"
+    },
+    {
+      "Package": "libffi8",
+      "Version": "3.4.8-2",
+      "Filename": "pool/main/libf/libffi/libffi8_3.4.8-2_arm64.deb",
+      "SHA256": "d84a783b818f2386627604e64b793eb4ac5bb9ea1ba321a194a1c9c82fe09a01"
+    },
+    {
+      "Package": "libbz2-1.0",
+      "Version": "1.0.8-6",
+      "Filename": "pool/main/b/bzip2/libbz2-1.0_1.0.8-6_arm64.deb",
+      "SHA256": "3537fe4fc577a60c8a9568873cd577db7ebc135eb8bb1825f18caf8972d9d2f2"
+    },
+    {
+      "Package": "liblzma5",
+      "Version": "5.8.1-1+deb13u1",
+      "Filename": "pool/main/x/xz-utils/liblzma5_5.8.1-1+deb13u1_arm64.deb",
+      "SHA256": "6a7b98005f84fc26d66a45e432f70d0793646a734f8c44cd1626b3ffa8edd7c6"
+    },
+    {
+      "Package": "libreadline8t64",
+      "Version": "8.2-6",
+      "Filename": "pool/main/r/readline/libreadline8t64_8.2-6_arm64.deb",
+      "SHA256": "f78ff432b2a627bc04f7eef0e6e2696501c9e06feca748a5b741d5e594429033"
+    },
+    {
+      "Package": "libtinfo6",
+      "Version": "6.5+20250216-2",
+      "Filename": "pool/main/n/ncurses/libtinfo6_6.5+20250216-2_arm64.deb",
+      "SHA256": "2a747f7fff3c2347c357387a7133df997410f07ba1b1df1a1461a97bd7fbc2fc"
+    },
+    {
+      "Package": "libncursesw6",
+      "Version": "6.5+20250216-2",
+      "Filename": "pool/main/n/ncurses/libncursesw6_6.5+20250216-2_arm64.deb",
+      "SHA256": "72121aeb08be2d915da321ddfae74f62a0764286f336279b2c2609ba07496d6d"
+    },
+    {
+      "Package": "libuuid1",
+      "Version": "2.41.5-0+deb13u1",
+      "Filename": "pool/main/u/util-linux/libuuid1_2.41.5-0+deb13u1_arm64.deb",
+      "SHA256": "448ad6b190184dbff24508ef2eda88bd737a5ffc0f9750eb779fcf9885292bea"
+    },
+    {
+      "Package": "libgdbm6t64",
+      "Version": "1.24-2",
+      "Filename": "pool/main/g/gdbm/libgdbm6t64_1.24-2_arm64.deb",
+      "SHA256": "329efe726e24a413b9933e298ce24d255973ec111eea0ca721157968fd24156a"
+    },
+    {
+      "Package": "libgdbm-compat4t64",
+      "Version": "1.24-2",
+      "Filename": "pool/main/g/gdbm/libgdbm-compat4t64_1.24-2_arm64.deb",
+      "SHA256": "266b9a9e8d1ecc4393ebd29bec7e7c0fe1505b1d8755033af9e15df161316627"
+    },
+    {
+      "Package": "libdb5.3t64",
+      "Version": "5.3.28+dfsg2-9",
+      "Filename": "pool/main/d/db5.3/libdb5.3t64_5.3.28+dfsg2-9_arm64.deb",
+      "SHA256": "bfef56508d69fd3f940668f6abd0a466a362cabf63c4cc1c787cc58d28f6e92f"
+    },
+    {
+      "Package": "libmpdec4",
+      "Version": "4.0.1-5",
+      "Filename": "pool/main/m/mpdecimal/libmpdec4_4.0.1-5_arm64.deb",
+      "SHA256": "8bc2b7607973c432f6f9c9ed21aee21eed0b7041bc0cffb5636dcb2fef3a7334"
+    },
+    {
+      "Package": "libsqlite3-0",
+      "Version": "3.46.1-7+deb13u2",
+      "Filename": "pool/main/s/sqlite3/libsqlite3-0_3.46.1-7+deb13u2_arm64.deb",
+      "SHA256": "5b09efca71cb7a16d67f5453af3989ae1a84fe6b68c6dd3913de527cb0ca23aa"
+    }
+  ]
+}

@@ -57,3 +57,7 @@ This prints hashes, ELF sections, the embedded version, and signature-section fa
 - [Enterprise out-of-band management](https://github.com/NVIDIA/nvbmc-docs/blob/develop/nvidia/Platforms/gpu-pcie-card-mgmt.md)
 
 For firmware-declared reset on runtime power transitions, see the [ACPI D3-to-D0 review](acpi-d3-reset.md).
+
+For cross-vendor CPU/GPU/baseboard combinations, POWER9 and Rubin distinctions,
+see the [enterprise hardware landscape](enterprise-hardware-landscape.md).
+The surveyed catalog is not an executable reset allowlist.

@@ -242,3 +242,8 @@ The optional [Switchtec adapter](docs/switchtec-adapter.md) supplies a provision
 managed-switch per-port hot-reset path with durable assertion/release tracking.
 It requires a qualified independent transport and site lifecycle helper; physical
 Switchtec/NVIDIA recovery remains untested.
+
+[Enterprise hardware landscape](docs/enterprise-hardware-landscape.md) maps
+53 sourced platform/configuration records across x86, ARM and POWER9, with
+explicit BIOS/firmware gaps and distinctions between PCIe, NVSwitch, coherent
+modules, racks and cloud ownership. It is research, not recovery certification.

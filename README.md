@@ -67,6 +67,14 @@ sudo gpu-firmware-policy --runtime-acpi
 
 This reads the DSDT's GNVS layout and the corresponding ACPI NVS memory, then maps encoded pads through chipset definitions and the kernel's live GPIO ranges. It needs `iasl`, readable `/dev/mem`, and mounted debugfs. The current chipset reference covers Alder Lake-S GPP_E and GPP_F; other chipsets need their own definitions. The report includes raw polarity and port values. It does not toggle GPIOs: GPU-to-slot association, polarity semantics, and reset scope still need validation.
 
+Run both scans together to cross-check named firmware settings against live fields:
+
+```bash
+sudo gpu-firmware-policy --live --runtime-acpi
+```
+
+The combined report includes `runtime_policy_correlations`: matching offsets and widths from x64 PCD getter/store sequences and the live DSDT layout. These are static code matches; the scanner does not execute firmware or establish which GPU a stored slot setting controls.
+
 Configured GPU workers are stopped before recovery and restarted afterwards. The script checks the GPU through NVML and can run a CUDA test you provide.
 
 ## Configure GPU workers

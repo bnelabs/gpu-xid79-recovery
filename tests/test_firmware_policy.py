@@ -1,4 +1,4 @@
-import struct,unittest
+import pathlib,struct,tempfile,unittest
 import firmware_policy as f
 
 class FirmwarePolicyTests(unittest.TestCase):
@@ -34,3 +34,24 @@ class FirmwarePolicyTests(unittest.TestCase):
         data=bytearray(self.executable(code));struct.pack_into('<I',data,76,0x40)
         self.assertEqual(f.policy_writes(bytes(data),names),[])
         self.assertEqual(f.policy_writes(self.executable(code,0x8664),names),[])
+    def test_x64_named_getter_copy_correlates_by_offset_and_width(self):
+        names={0x91:{'name':'PcdPegSlot4RstGpioNo','namespace':'gBoard'}}
+        code=b'\xe8\x00\x00\x00\x00\xb9'+struct.pack('<I',0x91)+b'\xff\x50\x18\x48\x8b\x0d\x00\x00\x00\x00\x89\x81'+struct.pack('<I',1234)
+        data=bytearray(self.executable(code,0x8664));data[768:784]=f.PCD_PROTOCOL_GUID
+        copies=f.policy_copies(bytes(data),names)
+        self.assertEqual(len(copies),1)
+        self.assertEqual((copies[0]['destination_byte_offset'],copies[0]['width']),(1234,32))
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory)
+            for name,blob in (('metadata',self.metadata([(0x91,'PcdPegSlot4RstGpioNo')])),('x64',bytes(data))):
+                (root/name).mkdir();(root/name/'body.bin').write_bytes(blob)
+            self.assertEqual(len(f.scan(root)['databases'][0]['runtime_field_copies']),1)
+        report={'databases':[{'metadata_sha256':'example','runtime_field_copies':copies}]}
+        fields={'ABCD':{'bit_offset':1234*8,'width':32,'value':123},'EFGH':{'bit_offset':1234*8,'width':8,'value':1}}
+        joined=f.correlate_runtime(report,{'fields':fields})
+        self.assertEqual([(c['acpi_field'],c['live_value']) for c in joined],[('ABCD',123)])
+        self.assertEqual(f.policy_copies(self.executable(code,0x8664),names),[])
+        bad=bytearray(data);bad[276]=0x88
+        self.assertEqual(f.policy_copies(bytes(bad),names),[])
+        struct.pack_into('<I',data,76,0x40)
+        self.assertEqual(f.policy_copies(bytes(data),names),[])

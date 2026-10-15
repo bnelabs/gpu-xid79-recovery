@@ -3,6 +3,8 @@
 import argparse,hashlib,json,os,pathlib,re,struct,subprocess,tempfile
 
 PCD_GUID=bytes.fromhex('581ce806d74abc448390f10265f72480')
+PCD_PROTOCOL_GUID=bytes.fromhex('0640b3115bd80a4da290d5a571310ef7')
+COPY=re.compile(rb'\xe8....\xb9(?P<token>....)\xff\x50(?P<slot>[\x08\x18\x30])\x48\x8b\x0d....(?P<store>[\x88\x89])\x81(?P<offset>....)',re.S)
 RESET_NAME=re.compile(r'^Pcd(?:Peg|Pcie).*(?:RstGpioNo|RstGpioPolarity|HoldRstActive|RootPort|GpioSupport)$')
 PUSH=re.compile(rb'(?P<value>\x68....|\x6a.|[\x50-\x57])(?P<token>\x68....|\x6a.)\xff\x50(?P<slot>[\x3c\x40\x44\x50])',re.S)
 
@@ -29,7 +31,7 @@ def names_from_metadata(data):
     return result
 
 
-def code_ranges(data):
+def code_ranges(data,expected_machine=0x14c):
     try:
         if data[:2]==b'VZ':
             machine=struct.unpack_from('<H',data,2)[0];count=data[4]
@@ -40,7 +42,7 @@ def code_ranges(data):
             machine,count=struct.unpack_from('<HH',data,pe+4)
             optional_size=struct.unpack_from('<H',data,pe+20)[0];table=pe+24+optional_size;delta=0
         else:return []
-        if machine!=0x14c or not 0<count<=96:return [] # IA32 writer pattern only.
+        if machine!=expected_machine or not 0<count<=96:return []
         result=[]
         for i in range(count):
             start=table+40*i
@@ -74,6 +76,37 @@ def policy_writes(data,names):
     return result
 
 
+def policy_copies(data,names):
+    """Bounded x64 getter/store patterns; destination region remains a candidate."""
+    if PCD_PROTOCOL_GUID not in data:return []
+    result=[]
+    for start,end in code_ranges(data,0x8664):
+        for match in COPY.finditer(data,start,end):
+            token=int.from_bytes(match['token'],'little');entry=names.get(token)
+            if not entry or not RESET_NAME.fullmatch(entry['name']):continue
+            slot=match['slot'][0];width=32 if slot==0x18 else 8
+            if match['store'][0]!=(0x89 if width==32 else 0x88):continue
+            offset=int.from_bytes(match['offset'],'little',signed=True)
+            if not 0<=offset<65536:continue
+            result.append(dict(entry,token=token,file_offset=match.start(),
+                operation={8:'Get8',0x18:'Get32',0x30:'GetBool'}[slot],
+                destination_byte_offset=offset,width=width,bytes=match[0].hex(),
+                status='static getter/store candidate; callee and destination object require validation'))
+    return result
+
+
+def correlate_runtime(report,runtime):
+    """Report matching field offsets, without promoting static patterns to proof."""
+    matches=[]
+    for database in report.get('databases',[]):
+        for copy in database.get('runtime_field_copies',[]):
+            for name,field in runtime.get('fields',{}).items():
+                if field['bit_offset']==8*copy['destination_byte_offset'] and field['width']==copy['width']:
+                    matches.append(dict(copy,acpi_field=name,live_value=field['value'],
+                                        metadata_sha256=database['metadata_sha256']))
+    return matches
+
+
 def module_name(path):
     for parent in path.parents:
         info=parent/'info.txt'
@@ -94,14 +127,17 @@ def scan(directory):
         seen.add(digest)
         decoded=names_from_metadata(data)
         if decoded:databases.append((digest,decoded))
-        if code_ranges(data) and PCD_GUID in data:modules.append((module_name(path),digest,data))
+        if ((code_ranges(data) and PCD_GUID in data) or
+                (code_ranges(data,0x8664) and PCD_PROTOCOL_GUID in data)):
+            modules.append((module_name(path),digest,data))
     # Token numbers are local to firmware builds. Keep databases separate; do
     # not merge incompatible namespaces or silently resolve conflicting names.
     reports=[]
     for digest,names in databases:
-        writes=[]
+        writes=[];copies=[]
         for name,module_hash,data in modules:
             for item in policy_writes(data,names):writes.append(dict(item,module=name,module_sha256=module_hash))
+            for item in policy_copies(data,names):copies.append(dict(item,module=name,module_sha256=module_hash))
         relevant={str(token):entry for token,entry in names.items() if RESET_NAME.fullmatch(entry['name'])}
         summaries=[]
         for name in sorted({item['name'] for item in writes}):
@@ -112,10 +148,11 @@ def scan(directory):
                 'constant_values':[hex(value) for value in values],'unresolved_register_sites':unknown,
                 'observed_writes_agree':len(values)==1 and unknown==0})
         reports.append({'metadata_sha256':digest,'total_named_tokens':len(names),
-                        'reset_policy_tokens':relevant,'assignment_summary':summaries,'assignments':writes})
-    return {'format':'AMI named PCD metadata + IA32 PcdPpi writer patterns',
+                        'reset_policy_tokens':relevant,'assignment_summary':summaries,'assignments':writes,
+                        'runtime_field_copies':copies})
+    return {'format':'AMI named PCD metadata + IA32 setters and x64 getter/store patterns',
             'databases':reports,'status':'discovered policy candidates; no hardware actions performed',
-            'limits':['IA32 immediate/register push patterns only; x64 writers are not decoded',
+            'limits':['Selected IA32 setter and x64 getter/store patterns only',
                       'Stored assignments may belong to inactive board/SKU branches',
                       'Register arguments remain unknown; polarity is not inferred',
                       'Firmware policy is not proof of current wiring or reset scope']}
@@ -160,6 +197,7 @@ def main():
     if args.runtime_acpi:
         from firmware_runtime import live_nvs
         report['runtime_acpi']=live_nvs(pathlib.Path(__file__).resolve().parent/'references')
+        report['runtime_policy_correlations']=correlate_runtime(report,report['runtime_acpi'])
     print(json.dumps(report,indent=2))
 
 if __name__=='__main__':main()

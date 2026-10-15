@@ -28,6 +28,8 @@ See [consumer and enterprise scenarios](docs/hardware-scenarios.md) for recovery
 
 [Missing-device experiments](docs/missing-device.md) test logical removal and narrowly scoped rediscovery on x86 and ARM64. The explorer reports a subordinate-bus rescan path; it does not automatically rescan absent GPUs.
 
+The [management firmware review](docs/management-firmware.md) checks OpenSMA's reset receiver, platform hook, and simulation limits. Its default hook does not provide physical reset; the included replay makes no hardware calls.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

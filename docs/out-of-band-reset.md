@@ -21,6 +21,10 @@ GeForce cards implement the command. Before using it, a backend needs to establi
 * Which other devices share its reset domain, including NVLink dependencies.
 * How driver removal, reset release, re-enumeration, and CUDA verification work.
 
+The [OpenSMA receiver review](management-firmware.md) found a default reset hook
+that returns NotSupported and a target-index list for other platform devices.
+NSM command encoding alone does not establish receiver support or a GPU mapping.
+
 The source's asynchronous GPU path performs both assertion and release; its
 synchronous `reset()` implementation returns without sending either command.
 A backend must use the actual asynchronous operation and check its result.

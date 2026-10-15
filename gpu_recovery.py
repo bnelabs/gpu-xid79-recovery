@@ -1013,7 +1013,7 @@ def watch(cfg):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch','hold','resume','check'])
+    parser.add_argument('action',choices=['discover','explore','plan','auto','recover','watch','hold','resume','check','assess'])
     parser.add_argument('--gpu',help='PCI BDF; automatically selected only when exactly one NVIDIA GPU exists')
     parser.add_argument('--config',help='JSON configuration; root-managed for privileged operations')
     parser.add_argument('--backend-only',action='store_true',help='Skip NVML reset; use configured lifecycle adapter')
@@ -1025,6 +1025,9 @@ def main():
         if os.geteuid() or not args.gpu or not BDF.fullmatch(args.gpu):raise RecoveryError('Root and explicit --gpu PCI address required')
         if args.action=='resume':return resume(args.gpu,cfg)
         return Services(service_items(cfg,args.gpu),args.gpu).stop()
+    if args.action=='assess':
+        from service_assessment import fleet
+        print(json.dumps(fleet(sys.modules[__name__],cfg,args.gpu),indent=2));return
     found=discover()
     if args.action=='discover': print(json.dumps(found,indent=2));return
     gpu=args.gpu or (found[0] if len(found)==1 else None)

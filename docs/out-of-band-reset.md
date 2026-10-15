@@ -80,6 +80,32 @@ and success/unsupported-command responses passed. The codec also accepts action
 values outside 0 and 1; callers need to enforce that range themselves.
 
 These tools do not send a reset. No NSM hardware recovery has been validated in
-this project, and no out-of-band backend is installed by the default installer.
+this project. The default installer now copies the optional Redfish adapter, but
+never selects or enables it; there is still no integrated NSM transport backend.
 
 A separate [managed-switch review](switch-management.md) covers per-port reset/retrain controls and management transport requirements.
+
+## Optional Redfish transport and sequencer fault replay
+
+The optional [Redfish GPU adapter](redfish-adapter.md) now implements scoped
+Processor.Reset requests under the local-domain contract. It still requires a
+real platform lifecycle helper. No automatic NSM backend or physical enterprise
+recovery is established by this addition.
+
+The new sequencer replay extracts the unchanged `NsmResetAsyncIntf` method from
+the pinned source above and compiles it with ASan/UBSan and a minimal coroutine
+harness. It tests every byte-valued assertion result and every byte-valued release
+result (512 cases). The modeled command transport completes immediately; no
+actual firmware or asynchronous transport scheduling is emulated.
+
+```bash
+python3 experiments/replay_nsm_lifecycle.py /path/to/nsmd --output /tmp/nsm-lifecycle.json
+```
+
+All 512 cases matched the source's status behavior. The coroutine returns
+`NSM_SW_SUCCESS` even when the async status becomes `InternalFailure`. A caller
+must consume the asynchronous status object. Also, a failed assertion result
+never leads to a release request. If assertion physically occurred but its reply
+was lost, this code alone does not reconcile or release that state. A future
+transport backend needs platform-specific reconciliation; blindly replaying or
+claiming success from a coroutine return value is insufficient.

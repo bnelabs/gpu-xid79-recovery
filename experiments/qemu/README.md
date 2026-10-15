@@ -101,3 +101,11 @@ combined with other modes. See [observed paths and hotplug limits](../../docs/ke
 `--domain` runs the production local-domain adapter path with two synthetic
 endpoints and a guest-only backend. It can combine with `--shared`, but not other
 experiment modes. See [domain results and substitutions](../../docs/domain-adapters.md).
+
+## Eight-device enterprise campaign
+
+`run_enterprise.py` adds eight endpoints, four reset groups, a loopback BMC,
+production Redfish adapter subprocesses, persistent service holds and a management/
+workload/fabric fault matrix. Add `--storage-shared` for the NVMe scope-refusal
+case. See [reproduction, assertions and substitutions](../../docs/enterprise-emulation.md).
+This does not emulate an operational NVIDIA GPU or execute proprietary firmware.

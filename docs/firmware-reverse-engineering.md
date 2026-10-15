@@ -90,3 +90,10 @@ register/config access and (c) complete link loss. Capture which transports rema
 usable and whether the documented driver path can bootstrap safely. Only then can
 an adapter claim a supported recovery mode. No physical fault injection or
 complete firmware disassembly was performed in this initial pass.
+
+## Follow-up evidence
+
+The [GSP reset fault replay](gsp-reset-fault-replay.md) now executes 14 cases
+against actual upstream reset bodies. Earlier timeout outcomes can be lost at
+these function boundaries under non-halting breakpoint behavior. This further
+limits treating a GSP reset return value as evidence of recovery.

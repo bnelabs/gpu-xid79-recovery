@@ -81,3 +81,5 @@ values outside 0 and 1; callers need to enforce that range themselves.
 
 These tools do not send a reset. No NSM hardware recovery has been validated in
 this project, and no out-of-band backend is installed by the default installer.
+
+A separate [managed-switch review](switch-management.md) covers per-port reset/retrain controls and management transport requirements.

@@ -410,6 +410,30 @@ def subordinate_rescan_path(bridge,root=SYSFS):
            if re.fullmatch(r'[0-9a-f]{4}:[0-9a-f]{2}',p.name) and (p/'rescan').exists()]
     return buses[0]/'rescan' if len(buses)==1 else None
 
+def switch_management_inventory(target,root=SYSFS,class_root=pathlib.Path('/sys/class/switchtec')):
+    """List PCI ancestors and existing switch management functions; no commands."""
+    device=(root/target.bdf).resolve()
+    ancestors=[p for p in device.parents if BDF.fullmatch(p.name)]
+    ancestor_names={p.name for p in ancestors}
+    controllers=[]
+    for entry in sorted(class_root.glob('*')):
+        link=entry/'device'
+        if not link.exists():continue
+        path=link.resolve()
+        controller_chain={p.name for p in [path,*path.parents] if BDF.fullmatch(p.name)}
+        controllers.append({'device':entry.name,'pci_bdf':path.name if BDF.fullmatch(path.name) else None,
+                            'partition':text(entry/'partition') or None,
+                            'partition_count':text(entry/'partition_count') or None,
+                            'firmware_version':text(entry/'fw_version') or None,
+                            'depends_on_target_gpu':path==device or device in path.parents,
+                            'shared_pci_ancestors':sorted(ancestor_names & controller_chain),
+                            'gpu_port_mapping_verified':False,'transport_survival_verified':False})
+    return {'pci_ancestors':[{'bdf':p.name,'vendor':text(p/'vendor'),'device':text(p/'device'),
+                              'class':text(p/'class')} for p in ancestors],
+            'switchtec_management_functions':controllers,
+            'note':'Common PCI ancestry does not map a switch physical port or prove reset scope. Absent local management devices do not exclude external I2C/UART controllers.'}
+
+
 def management_inventory(target):
     # Enumerate existing OS devices only; do not send SMBus or NSM messages.
     return {'i2c_adapters':[{'adapter':p.name,'name':text(p/'name'),
@@ -485,6 +509,7 @@ def explore(target,cfg,root=SYSFS,profile_dir=PROFILE_DIR):
             'chipset_devices':[], 'acpi_tables':[],
             'nvidia':nvidia_inventory(target),
             'management':management_inventory(target),
+            'switch_management':switch_management_inventory(target,root),
             'hotplug_slots':hotplug_inventory(target,root),
             'pci_error_counters':pci_error_inventory(target,root),
             'subordinate_rescan_path':str(rescan) if rescan else None,

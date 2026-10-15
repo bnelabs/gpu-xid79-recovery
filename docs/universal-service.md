@@ -101,3 +101,7 @@ The [prepared-domain implementation](prepared-domain-recovery.md) now removes
 the previously unconditional refusal of vanished PCI functions. It prepares
 identity/scope while available and uses independently mapped controls after
 failure. It does not infer a missing physical reset path from a firmware image.
+
+The [independent-controller engineering contract](independent-recovery-controller.md)
+defines a motherboard-independent hardware direction, an offline qualification
+checker, and the physical evidence still required.

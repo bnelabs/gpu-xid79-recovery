@@ -19,6 +19,7 @@ import urllib.request
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 import gpu_recovery as g
 import domain_adapter as domain
+from adapters.reset_journal import Journal
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -252,6 +253,15 @@ class Adapter:
             raise g.RecoveryError('Controller domain differs from provisioned GPU mapping')
         if boot != g.text('/proc/sys/kernel/random/boot_id') or not nonce or env.get('GPU_BDF') not in approved:
             raise g.RecoveryError('Invalid operation identity')
+        intent = env.get('GPU_RECOVERY_INTENT')
+        if intent not in ('recover', 'resume') or phase == 'recover' and intent != 'recover':
+            raise g.RecoveryError('Explicit controller recovery intent required')
+        with Journal(g, self.cfg.get('state_dir', '/var/lib/gpu-recovery-generic/redfish'),
+                     self.client.origin, self.targets, scope) as journal:
+            journal.check(phase, intent, nonce)
+            return self._execute(phase, env, approved, scope, boot, nonce, journal)
+
+    def _execute(self, phase, env, approved, scope, boot, nonce, journal):
         # Keep the complete adapter invocation below the controller's 60-second
         # preflight/validation bounds, including all member queries and tasks.
         self.client.deadline = time.monotonic() + 45
@@ -265,7 +275,8 @@ class Adapter:
         # Recheck preflight even in recover, using this fresh domain nonce.
         check_phase = 'validation' if phase == 'validation' else 'preflight'
         helper_env = dict(env, GPU_RECOVERY_PHASE=check_phase,
-                          GPU_REDFISH_TARGETS=json.dumps(inventory, sort_keys=True))
+                          GPU_REDFISH_TARGETS=json.dumps(inventory, sort_keys=True),
+                          GPU_PENDING_RESETS=json.dumps(journal.overlaps(), sort_keys=True))
         remaining = self.client.deadline - time.monotonic()
         if remaining <= 0:
             raise g.CommandTimeout('Adapter deadline expired before lifecycle check')
@@ -280,11 +291,19 @@ class Adapter:
         if phase == 'recover':
             if self.inventory() != inventory:
                 raise g.RecoveryError('BMC identity or action changed after lifecycle check')
+            journal.arm(nonce, boot)
             for item in inventory.values():
+                journal.pending(nonce, item['resource'])
                 self.client.reset(item['action'], item['reset_type'])
+                journal.completed(nonce, item['resource'])
+            journal.awaiting_validation(nonce)
             # A successful BMC action is not CUDA/fabric validation. The outer
             # controller performs both before releasing any workload hold.
             return {'reset_requests_completed': len(inventory), 'workloads_verified': False}
+        if phase == 'validation':
+            if journal.overlaps() and env['GPU_RECOVERY_INTENT'] == 'resume' and value.get('management_reset_resolved') is not True:
+                raise g.RecoveryError('Lifecycle helper has not reconciled the pending management reset')
+            journal.clear_verified()
         return value
 
 

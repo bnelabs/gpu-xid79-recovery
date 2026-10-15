@@ -99,8 +99,8 @@ same-origin TaskService monitor and bounded polling. A completed Task must have
 `TaskStatus=OK`; failed, unknown or timed-out tasks stop the operation. A completed
 management action still requires the controller's workload and fabric validation.
 
-No POST is retried, including after connection loss. An ambiguous result requires
-platform-specific reconciliation before a later manual attempt. Redirects, remote
+No POST is retried, including after connection loss. An ambiguous result is durably latched and requires
+platform-specific reconciliation before another reset attempt. Redirects, remote
 monitor URLs and proxy environment variables are not followed. A local 45-second
 invocation deadline bounds queries, helpers and tasks below the outer controller
 preflight/validation timeout. Individual HTTP and task timeout values are also
@@ -122,3 +122,47 @@ Primary references:
 - [DMTF Processor schema](https://raw.githubusercontent.com/DMTF/Redfish-Publications/main/json-schema/Processor.v1_24_0.json)
 - [DMTF ActionInfo schema](https://raw.githubusercontent.com/DMTF/Redfish-Publications/main/json-schema/ActionInfo.v1_4_2.json)
 - [NVIDIA PCIe card management capabilities](https://github.com/NVIDIA/nvbmc-docs/blob/develop/nvidia/Platforms/gpu-pcie-card-mgmt.md)
+
+## Persistent reset intent and reconciliation
+
+The adapter keeps a root-managed operation journal under
+`/var/lib/gpu-recovery-generic/redfish` (override with an absolute `state_dir`).
+A nonblocking lock serializes local adapter access. Atomic replacements, file
+fsync and directory fsync persist the complete approved mapping before the first
+POST, then checkpoint the active resource and completed actions. No credentials
+are journaled. An unresolved record survives adapter/watcher restarts and host
+reboots; it is not discarded when the Linux boot ID changes.
+
+Another recovery that overlaps the same BMC origin and GPU resource is refused.
+Reducing the configured domain or changing its physical identity cannot bypass
+that refusal: the full original mapping and PCI scope must be restored before
+reconciliation. A different BMC hostname/alias is a different origin, so keep
+provisioned endpoints stable. Local journaling does not establish cross-host
+exclusivity; that remains a lifecycle-helper responsibility.
+
+After a platform-specific procedure restores the GPU domain and establishes that
+no BMC task or asserted reset remains pending, use the existing controller resume:
+
+```bash
+sudo gpu-recovery resume --gpu 0000:41:00.0 --config /etc/gpu-recovery/config.json
+```
+
+The domain controller passes `GPU_RECOVERY_INTENT=resume`, performs fresh
+preflight and all member workload checks, then invokes final lifecycle validation.
+The helper receives `GPU_PENDING_RESETS` containing relevant unresolved journal
+records. Besides its usual receipt fields, final validation must return the
+Boolean `management_reset_resolved: true` when reconciling a journaled operation.
+It must establish that independently from the actual platform/controller state;
+echoing a field or checking GPU health alone is insufficient when a deferred reset
+could still be pending. A false/missing field or failed fabric/workload check
+retains the journal and holds. No reset POST is issued by resume.
+
+A successful ordinary recovery clears its journal only after whole-domain
+validation. An adapter killed before that point leaves an unresolved operation,
+even if some or all reset requests completed. This conservative behavior avoids
+replaying destructive operations merely because a response or controller process
+was lost. Do not delete journal files as a substitute for reconciliation.
+
+The journal unit tests use real files and locks with substituted ownership checks;
+the QEMU campaign executes real root-path checks and adapter subprocesses. It
+models process restart, not a physical power failure or storage durability fault.

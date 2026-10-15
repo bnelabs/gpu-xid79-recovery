@@ -86,7 +86,8 @@ def execute(g,target,cfg,backend,reset=True,root=None):
         if not boot:raise g.RecoveryError('Missing boot identity')
         nonce=secrets.token_hex(16)
         env=dict(os.environ,GPU_BDF=target.bdf,GPU_DOMAIN_MEMBERS=json.dumps(approved,sort_keys=True),
-                 GPU_DOMAIN_SCOPE=json.dumps(scope),GPU_RECOVERY_BOOT_ID=boot,GPU_RECOVERY_NONCE=nonce)
+                 GPU_DOMAIN_SCOPE=json.dumps(scope),GPU_RECOVERY_BOOT_ID=boot,GPU_RECOVERY_NONCE=nonce,
+                 GPU_RECOVERY_INTENT='recover' if reset else 'resume')
         services=[g.Services(g.service_items(cfg,bdf),bdf) for bdf in sorted(approved)]
         verified=False
         try:

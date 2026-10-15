@@ -2,6 +2,7 @@ import http.server
 import json
 import pathlib
 import threading
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -46,7 +47,9 @@ class RedfishTests(unittest.TestCase):
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
-        self.cfg = {'schema': 1, 'lab': True,
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.cfg = {'schema': 1, 'lab': True, 'state_dir': self.temp.name,
             'endpoint': f'http://127.0.0.1:{self.server.server_port}', 'task_timeout': .05,
             'targets': {BDF: {'uuid': UUID, 'resource': RESOURCE,
                 'serial': 'SERIAL-0', 'reset_type': 'ForceRestart'}}}
@@ -164,7 +167,40 @@ class RedfishTests(unittest.TestCase):
         self.server.reply = lambda method, path: (200, {}, self.gpu())
         env = {'GPU_DOMAIN_MEMBERS': json.dumps({BDF: UUID}), 'GPU_DOMAIN_SCOPE': json.dumps([BDF]),
             'GPU_RECOVERY_BOOT_ID': g.text('/proc/sys/kernel/random/boot_id'),
-            'GPU_RECOVERY_NONCE': 'fresh', 'GPU_BDF': BDF}
-        with self.assertRaisesRegex(g.RecoveryError, 'lifecycle command'):
-            self.adapter().execute('recover', env)
+            'GPU_RECOVERY_NONCE': 'fresh', 'GPU_BDF': BDF, 'GPU_RECOVERY_INTENT': 'recover'}
+        with patch.object(g, 'trusted_file', side_effect=lambda p: pathlib.Path(p)):
+            with self.assertRaisesRegex(g.RecoveryError, 'lifecycle command'):
+                self.adapter().execute('recover', env)
         self.assertFalse(any(method == 'POST' for method, _ in self.server.events))
+
+    def test_pending_reset_survives_new_adapter_and_requires_explicit_reconciliation(self):
+        self.cfg['lifecycle_command'] = ['/fixture/lifecycle']
+        self.server.reply = lambda method, path: (500, {}, {}) if method == 'POST' else (200, {}, self.gpu())
+        env = {'GPU_DOMAIN_MEMBERS': json.dumps({BDF: UUID}), 'GPU_DOMAIN_SCOPE': json.dumps([BDF]),
+            'GPU_RECOVERY_BOOT_ID': g.text('/proc/sys/kernel/random/boot_id'),
+            'GPU_RECOVERY_NONCE': 'first', 'GPU_BDF': BDF, 'GPU_RECOVERY_INTENT': 'recover'}
+        resolved = False
+        def helper(argv, timeout, child_env):
+            return 0, json.dumps({'schema': 1, 'nonce': child_env['GPU_RECOVERY_NONCE'],
+                'boot_id': child_env['GPU_RECOVERY_BOOT_ID'], 'members': {BDF: UUID}, 'scope_bdfs': [BDF],
+                'exclusive_local_control': True, 'host_reboot_required': False, 'clients_quiesced': True,
+                'ready': True, 'workloads_verified': True, 'fabric_verified': True,
+                'management_reset_resolved': resolved})
+        with patch.object(g, 'trusted_file', side_effect=lambda p: pathlib.Path(p)), patch.object(g, 'run', side_effect=helper):
+            with self.assertRaisesRegex(g.RecoveryError, 'HTTP 500'):
+                self.adapter().execute('recover', env)
+            original_events = list(self.server.events)
+            env['GPU_RECOVERY_NONCE'] = 'second'
+            with self.assertRaisesRegex(g.RecoveryError, 'Unresolved management reset'):
+                self.adapter().execute('preflight', env)
+            self.assertEqual(original_events, self.server.events)
+            env['GPU_RECOVERY_INTENT'] = 'resume'
+            self.adapter().execute('preflight', env)
+            with self.assertRaisesRegex(g.RecoveryError, 'not reconciled'):
+                self.adapter().execute('validation', env)
+            path = pathlib.Path(self.temp.name)/'operations.json'
+            self.assertTrue(json.loads(path.read_text())['operations'])
+            resolved = True
+            self.adapter().execute('validation', env)
+            self.assertFalse(json.loads(path.read_text())['operations'])
+        self.assertEqual(sum(method == 'POST' for method, _ in self.server.events), 1)

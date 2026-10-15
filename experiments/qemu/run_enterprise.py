@@ -29,6 +29,7 @@ def main():
         root = base/'root'
         root.mkdir()
         build_root(root, args.userspace)
+        (root/'run').chmod(0o755)
         init = root/'init'
         init.write_text(init.read_text().replace('/usr/bin/python3 /lab/guest.py', '/bin/busybox ip link set lo up\n/usr/bin/python3 /lab/guest.py'))
         for name in ('enterprise_guest.py', 'enterprise_fixture.py'):
@@ -36,6 +37,7 @@ def main():
         copy_file(lab/'enterprise_guest.py', root, 'lab/guest.py')
         copy_file(repo/'domain_adapter.py', root, 'lab/domain_adapter.py')
         copy_file(repo/'adapters/redfish_gpu.py', root, 'lab/adapters/redfish_gpu.py')
+        copy_file(repo/'adapters/reset_journal.py', root, 'lab/adapters/reset_journal.py')
         (root/'lab/adapters').chmod(0o755)
         for path in (root/'lab').rglob('*.py'):
             path.chmod(0o644)
@@ -91,7 +93,7 @@ esac
         report['qemu_returncode'] = rc
         report['qemu_version'] = subprocess.check_output([command[0], '-version'], text=True).splitlines()[0]
         report['inputs_sha256'] = {str(path.relative_to(repo)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (repo/'gpu_recovery.py', repo/'domain_adapter.py', repo/'adapters/redfish_gpu.py',
+            for path in (repo/'gpu_recovery.py', repo/'domain_adapter.py', repo/'adapters/redfish_gpu.py', repo/'adapters/reset_journal.py',
                          lab/'enterprise_guest.py', lab/'enterprise_fixture.py', pathlib.Path(__file__).resolve())}
         report['kernel_sha256'] = hashlib.sha256(args.kernel.read_bytes()).hexdigest()
         args.output.write_text(json.dumps(report, indent=2)+'\n')

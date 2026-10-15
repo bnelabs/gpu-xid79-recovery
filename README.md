@@ -18,6 +18,8 @@ See [GPU families and firmware](docs/gpu-families.md) for the reviewed paths. Ne
 
 The [QEMU lab](experiments/qemu/README.md) runs the controller on both CPU architectures without access to host devices. It tests kernel reset behavior and isolation; it does not emulate NVIDIA firmware or prove recovery from a physical Xid79 fault.
 
+[Out-of-band reset research](docs/out-of-band-reset.md) covers NVIDIA's NSM fundamental-reset command, management transport discovery, and the remaining requirements for an enterprise backend. The included codec replay makes no hardware calls.
+
 ## Install
 
 Requires Linux, Python 3.10+, NVIDIA driver tools, and systemd. There are no extra Python dependencies.

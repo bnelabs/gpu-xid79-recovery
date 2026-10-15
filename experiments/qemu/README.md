@@ -93,3 +93,7 @@ References: [QEMU PCI test device](https://www.qemu.org/docs/master/specs/pci-te
 [QEMU reset framework](https://www.qemu.org/docs/master/devel/reset.html).
 
 For actual NVIDIA core-module failed-probe tests against a deliberately dead vfio-user endpoint, see [NVIDIA probe lab](NVIDIA-PROBE.md). This runs real module code inside the VM without emulating a functioning GPU.
+
+`--trace-reset` records actual kernel reset calls with guest-only kprobes during
+an isolated default test. It requires tracefs/kprobe support and cannot be
+combined with other modes. See [observed paths and hotplug limits](../../docs/kernel-reset-lifecycle.md).

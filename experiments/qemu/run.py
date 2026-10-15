@@ -55,8 +55,10 @@ def main():
  parser.add_argument('--aer',action='store_true',help='Inject a synthetic fatal AER into the guest root port')
  parser.add_argument('--aer-driver',type=pathlib.Path,help='Synthetic testdev kernel module loaded inside the AER guest only')
  parser.add_argument('--scope-peer',choices=['nvme','gpu'],help='Test recovery scope with an NVMe controller or a second admitted synthetic GPU')
+ parser.add_argument('--trace-reset',action='store_true',help='Trace real guest kernel reset calls; isolated default fixture only')
  parser.add_argument('--missing',action='store_true',help='Test guest logical removal and scoped rediscovery; no physical link-loss simulation')
  args=parser.parse_args()
+ if args.trace_reset and (args.shared or args.slot_power or args.aer or args.scope_peer or args.missing):parser.error('--trace-reset requires the default isolated fixture')
  if args.slot_power and args.shared:parser.error('Slot-power experiment requires separate bridges')
  if args.aer and (args.shared or args.slot_power):parser.error('AER experiment requires separate bridges and no slot-power mode')
  if args.aer_driver and not args.aer:parser.error('--aer-driver requires --aer')
@@ -76,7 +78,7 @@ def main():
   command=[f'qemu-system-{args.arch}','-machine',machine,'-accel','tcg','-cpu',cpu,'-smp','2','-m','768',
            '-nodefaults','-no-user-config','-display','none','-serial','stdio','-monitor','none','-nic','none',
            '-no-reboot','-kernel',str(args.kernel.resolve()),'-initrd',str(initrd),
-           '-append',f'console={console} panic=-1 quiet gpu_recovery_lab=1'+(' lab_shared=1' if args.shared else '')+(' lab_peer='+args.scope_peer if args.scope_peer else ''),
+           '-append',f'console={console} panic=-1 quiet gpu_recovery_lab=1'+(' lab_trace_reset=1' if args.trace_reset else '')+(' lab_shared=1' if args.shared else '')+(' lab_peer='+args.scope_peer if args.scope_peer else ''),
            '-device','pcie-root-port,id=rp1,bus=pcie.0,addr=2,chassis=1',
            ]
   if args.shared:

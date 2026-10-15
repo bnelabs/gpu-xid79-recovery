@@ -87,3 +87,6 @@ NVIDIA driver callbacks. The recovery controller still needs a supported reset
 path and successful post-reset verification.
 
 See also [upstream link retraining](link-retraining.md) for port-side training diagnostics and the Linux 2.5 GT/s workaround.
+
+The [kernel reset lifecycle review](kernel-reset-lifecycle.md) adds actual guest
+call traces for `reset_subordinate` and distinguishes them from DPC containment.
